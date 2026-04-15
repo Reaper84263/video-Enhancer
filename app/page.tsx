@@ -6,17 +6,14 @@ import {
   Upload,
   Scissors,
   Download,
-  Film,
-  Shield,
   Loader2,
   Play,
   Pause,
   RotateCcw,
-  Sparkles,
-  Clock3,
-  Wand2,
-  CheckCircle2,
   HardDriveUpload,
+  Settings2,
+  CircleHelp,
+  ChevronDown,
 } from "lucide-react";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
@@ -30,11 +27,11 @@ function cn(...parts: Array<string | false | null | undefined>) {
 }
 
 function Card({ className = "", ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("border bg-white/5", className)} {...props} />;
+  return <div className={cn("border border-slate-200 bg-white", className)} {...props} />;
 }
 
 function CardHeader({ className = "", ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />;
+  return <div className={cn("flex flex-col space-y-1.5 p-5 sm:p-6", className)} {...props} />;
 }
 
 function CardTitle({ className = "", ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
@@ -51,9 +48,9 @@ function CardContent({ className = "", ...props }: React.HTMLAttributes<HTMLDivE
 
 function Button({ className = "", variant = "default", type = "button", ...props }: ButtonProps) {
   const styles = {
-    default: "border-transparent bg-white text-slate-950 hover:bg-slate-200",
-    secondary: "border border-white/10 bg-white/10 text-white hover:bg-white/15",
-    outline: "border border-white/20 bg-transparent text-white hover:bg-white/10",
+    default: "border border-transparent bg-[#6f73e8] text-white hover:bg-[#6267df]",
+    secondary: "border border-slate-300 bg-slate-900 text-white hover:bg-slate-800",
+    outline: "border border-[#7b81ff] bg-white text-[#6f73e8] hover:bg-[#f4f5ff]",
   };
 
   return (
@@ -73,7 +70,7 @@ function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInput
   return (
     <input
       className={cn(
-        "flex h-10 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-400 focus:border-white/25",
+        "flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-[#8a90ff]",
         className,
       )}
       {...props}
@@ -103,8 +100,8 @@ function Separator({ className = "", ...props }: React.HTMLAttributes<HTMLDivEle
 
 function Progress({ value = 0, className = "" }: { value?: number; className?: string }) {
   return (
-    <div className={cn("h-2 w-full overflow-hidden rounded-full bg-white/10", className)}>
-      <div className="h-full rounded-full bg-white transition-all" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+    <div className={cn("h-2 w-full overflow-hidden rounded-full bg-slate-200", className)}>
+      <div className="h-full rounded-full bg-[#6f73e8] transition-all" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
     </div>
   );
 }
@@ -134,16 +131,16 @@ function Slider({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="relative h-8">
-        <div className="absolute left-0 top-1/2 h-2 w-full -translate-y-1/2 rounded-full bg-white/10" />
+        <div className="absolute left-0 top-1/2 h-2 w-full -translate-y-1/2 rounded-full bg-slate-300" />
 
         {isRange ? (
           <div
-            className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-white/40"
+            className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-[#6f73e8]"
             style={{ left: `${startPercent}%`, width: `${Math.max(0, endPercent - startPercent)}%` }}
           />
         ) : (
           <div
-            className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-white/40"
+            className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-[#6f73e8]"
             style={{ width: `${startPercent}%` }}
           />
         )}
@@ -207,19 +204,19 @@ function Slider({
           width: 18px;
           border-radius: 9999px;
           background: white;
-          border: 2px solid rgba(15, 23, 42, 0.9);
+          border: 2px solid #6f73e8;
           margin-top: -5px;
           cursor: pointer;
-          box-shadow: 0 0 0 4px rgba(255,255,255,0.08);
+          box-shadow: 0 0 0 4px rgba(111,115,232,0.15);
         }
         .slider-thumb::-moz-range-thumb {
           height: 18px;
           width: 18px;
           border-radius: 9999px;
           background: white;
-          border: 2px solid rgba(15, 23, 42, 0.9);
+          border: 2px solid #6f73e8;
           cursor: pointer;
-          box-shadow: 0 0 0 4px rgba(255,255,255,0.08);
+          box-shadow: 0 0 0 4px rgba(111,115,232,0.15);
         }
       `}</style>
     </div>
@@ -233,6 +230,16 @@ const formatTime = (seconds: number) => {
   const secs = Math.floor(seconds % 60);
   if (hrs > 0) return [hrs, mins, secs].map((v) => String(v).padStart(2, "0")).join(":");
   return [mins, secs].map((v) => String(v).padStart(2, "0")).join(":");
+};
+
+const formatTimestamp = (seconds: number) => {
+  const safe = Math.max(0, seconds || 0);
+  const hrs = Math.floor(safe / 3600);
+  const mins = Math.floor((safe % 3600) / 60);
+  const secs = Math.floor(safe % 60);
+  const hundredths = Math.floor((safe % 1) * 100);
+
+  return [hrs, mins, secs].map((v) => String(v).padStart(2, "0")).join(":") + `.${String(hundredths).padStart(2, "0")}`;
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -437,6 +444,16 @@ function VideoTrimmerApp() {
     setStatus("Trim range reset.");
   };
 
+  const copyCurrentTimeToStart = () => {
+    applyRange(currentTime, Math.max(currentTime + 0.1, range[1]));
+    setStatus("Trim start copied from player time.");
+  };
+
+  const copyCurrentTimeToEnd = () => {
+    applyRange(range[0], currentTime);
+    setStatus("Trim end copied from player time.");
+  };
+
   const handleTrim = async () => {
     if (!file) return;
 
@@ -521,164 +538,164 @@ function VideoTrimmerApp() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <section className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.18),transparent_32%),radial-gradient(circle_at_80%_20%,rgba(168,85,247,0.16),transparent_28%)]" />
-        <div className="relative mx-auto max-w-7xl px-6 py-16 md:py-24">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
-            className="mx-auto max-w-3xl text-center"
-          >
-            <Badge className="mb-4 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-white">
-              Production-ready Next.js video trimmer
-            </Badge>
-            <h1 className="text-4xl font-semibold tracking-tight md:text-6xl">Trim video to MP4 with a polished browser workflow</h1>
-            <p className="mt-5 text-base leading-7 text-slate-300 md:text-lg">
-              Upload a video, preview the exact section you want, then export a real MP4 using FFmpeg in the browser. Built for a deployed Next.js app.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-300">
-              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                <Shield className="h-4 w-4" /> Local-first processing
-              </div>
-              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                <Film className="h-4 w-4" /> MP4 export
-              </div>
-              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                <Wand2 className="h-4 w-4" /> FFmpeg powered
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      <main className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[1.15fr_0.85fr]">
-        <Card className="rounded-3xl border-white/10 bg-white/5 shadow-2xl shadow-black/20 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="text-2xl text-white">Editor</CardTitle>
-            <CardDescription className="text-slate-300">
-              This version is self-contained for UI and uses FFmpeg WebAssembly for real MP4 trimming in a normal deployment.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {!videoUrl ? (
-              <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                onClick={() => inputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragging(true);
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragging(false);
-                  handleVideoSelected(e.dataTransfer.files?.[0] || null);
-                }}
-                className={cn(
-                  "flex min-h-[320px] w-full flex-col items-center justify-center rounded-3xl border border-dashed px-6 py-10 text-center transition",
-                  dragging
-                    ? "border-blue-400 bg-blue-500/10"
-                    : "border-white/15 bg-slate-900/70 hover:border-white/30 hover:bg-slate-900",
-                )}
-              >
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
-                  <HardDriveUpload className="h-8 w-8" />
-                </div>
-                <h3 className="mt-5 text-xl font-medium">Drop your video here</h3>
-                <p className="mt-2 max-w-md text-sm leading-6 text-slate-300">
-                  Choose a local video file. The trim engine loads on demand, then your edited clip is exported as MP4.
-                </p>
-                <Button className="mt-6 rounded-2xl">Choose file</Button>
-              </motion.button>
-            ) : (
-              <div className="space-y-5">
-                <div className="overflow-hidden rounded-3xl border border-white/10 bg-black">
-                  <video
-                    ref={videoRef}
-                    src={previewUrl}
-                    className="aspect-video w-full bg-black"
-                    controls={false}
-                    playsInline
-                    onLoadedMetadata={onLoadedMetadata}
-                    onTimeUpdate={onTimeUpdate}
-                    onPause={() => setIsPlaying(false)}
-                    onPlay={() => setIsPlaying(true)}
-                  />
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-4">
-                  <Button onClick={togglePlay} className="rounded-2xl">
-                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    {isPlaying ? "Pause" : "Preview"}
-                  </Button>
-                  <Button variant="secondary" onClick={resetPlayback} className="rounded-2xl">
-                    <RotateCcw className="h-4 w-4" /> Rewind
-                  </Button>
-                  <Button variant="secondary" onClick={resetAll} className="rounded-2xl">
-                    <Scissors className="h-4 w-4" /> Reset output
-                  </Button>
-                  <Button variant="secondary" onClick={() => inputRef.current?.click()} className="rounded-2xl">
-                    <Upload className="h-4 w-4" /> New file
-                  </Button>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Current time</p>
-                    <p className="mt-2 text-lg font-medium">{formatTime(currentTime)}</p>
+    <div className="min-h-screen bg-[#f3f4f8] text-slate-900">
+      <main className="mx-auto max-w-[1280px] px-4 py-4 sm:px-6 sm:py-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]"
+        >
+          <div className="grid min-h-[760px] lg:grid-cols-[1.75fr_1fr]">
+            <div className="border-b border-slate-200 p-5 sm:p-8 lg:border-b-0 lg:border-r">
+              {!videoUrl ? (
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => inputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    handleVideoSelected(e.dataTransfer.files?.[0] || null);
+                  }}
+                  className={cn(
+                    "flex min-h-[520px] w-full flex-col items-center justify-center rounded-[26px] border-2 border-dashed px-8 py-12 text-center transition",
+                    dragging ? "border-[#7c82ff] bg-[#eff1ff]" : "border-slate-300 bg-[#fafbff] hover:border-[#8a90ff]",
+                  )}
+                >
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#6f73e8] text-white">
+                    <HardDriveUpload className="h-8 w-8" />
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Duration</p>
-                    <p className="mt-2 text-lg font-medium">{formatTime(duration)}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Selected clip</p>
-                    <p className="mt-2 text-lg font-medium">{formatTime(selectionLength)}</p>
-                  </div>
-                </div>
+                  <h2 className="mt-6 text-2xl font-semibold text-slate-900">Drop your video here</h2>
+                  <p className="mt-3 max-w-lg text-sm leading-6 text-slate-500">
+                    Upload a video to open the trimming workspace. Once loaded, you can set exact start and end points and export an MP4.
+                  </p>
+                  <Button className="mt-8 min-w-[180px] rounded-xl px-6 py-3 text-base">Choose file</Button>
+                </motion.button>
+              ) : (
+                <div className="space-y-6">
+                  <div className="overflow-hidden rounded-[24px] bg-[#d7dbe3]">
+                    <video
+                      ref={videoRef}
+                      src={previewUrl}
+                      className="aspect-video w-full bg-black"
+                      controls={false}
+                      playsInline
+                      onLoadedMetadata={onLoadedMetadata}
+                      onTimeUpdate={onTimeUpdate}
+                      onPause={() => setIsPlaying(false)}
+                      onPlay={() => setIsPlaying(true)}
+                    />
 
-                <div className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/70 p-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-white">Trim range</p>
-                      <p className="text-sm text-slate-300">Move the handles to choose exactly what to keep.</p>
+                    <div className="bg-[#cfd3db] px-3 py-3 sm:px-4">
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={togglePlay}
+                          className="flex h-10 w-10 items-center justify-center rounded-md bg-[#313844] text-white"
+                          aria-label={isPlaying ? "Pause preview" : "Play preview"}
+                        >
+                          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
+                        </button>
+                        <div className="min-w-[48px] rounded-md bg-[#313844] px-3 py-2 text-center font-semibold text-white">
+                          {formatTime(currentTime)}
+                        </div>
+                        <div className="flex-1">
+                          <Slider
+                            value={[clamp(currentTime, 0, Math.max(duration, 0.1))]}
+                            min={0}
+                            max={Math.max(duration, 0.1)}
+                            step={0.05}
+                            onValueChange={(value) => {
+                              const video = videoRef.current;
+                              if (!video) return;
+                              video.currentTime = value[0];
+                              setCurrentTime(value[0]);
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <Badge className="rounded-full border border-white/10 bg-white/5 text-white">
-                      {formatTime(range[0])} - {formatTime(range[1])}
-                    </Badge>
                   </div>
 
-                  <Slider
-                    value={range}
-                    min={0}
-                    max={Math.max(duration, 0.1)}
-                    step={0.1}
-                    onValueChange={(value) => applyRange(value[0], value[1])}
-                    className="py-4"
-                  />
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <span className="text-base text-slate-900">Use current position as:</span>
+                    <Button variant="outline" onClick={copyCurrentTimeToStart} className="rounded-xl px-5 py-2.5">
+                      Trim Start
+                    </Button>
+                    <Button variant="outline" onClick={copyCurrentTimeToEnd} className="rounded-xl px-5 py-2.5">
+                      Trim End
+                    </Button>
+                    <Button variant="secondary" onClick={resetPlayback} className="rounded-xl px-5 py-2.5">
+                      <RotateCcw className="h-4 w-4" /> Rewind
+                    </Button>
+                    <Button variant="secondary" onClick={() => inputRef.current?.click()} className="rounded-xl px-5 py-2.5">
+                      <Upload className="h-4 w-4" /> New File
+                    </Button>
+                  </div>
 
-                  <div>
-                    <label className="mb-2 block text-sm text-slate-300">Seek inside selection</label>
+                  <div className="rounded-[22px] border border-slate-200 bg-[#fafbff] p-5">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Trim selection</p>
+                        <p className="text-sm text-slate-500">
+                          {formatTimestamp(range[0])} to {formatTimestamp(range[1])}
+                        </p>
+                      </div>
+                      <Badge className="rounded-full bg-[#eef0ff] text-[#545add]">
+                        {formatTime(selectionLength)} selected
+                      </Badge>
+                    </div>
+
                     <Slider
-                      value={[clamp(currentTime, range[0], Math.max(range[1], range[0] + 0.1))]}
-                      min={range[0]}
-                      max={Math.max(range[1], range[0] + 0.1)}
-                      step={0.05}
-                      onValueChange={(value) => {
-                        const video = videoRef.current;
-                        if (!video) return;
-                        video.currentTime = value[0];
-                        setCurrentTime(value[0]);
-                      }}
+                      value={range}
+                      min={0}
+                      max={Math.max(duration, 0.1)}
+                      step={0.1}
+                      onValueChange={(value) => applyRange(value[0], value[1])}
+                      className="py-2"
                     />
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <label className="mb-2 block text-sm text-slate-300">Start time</label>
+                  {(isTrimming || isLoadingEngine || progress > 0) && (
+                    <div className="rounded-[22px] border border-slate-200 bg-white p-4">
+                      <div className="mb-2 flex items-center justify-between text-sm text-slate-600">
+                        <span>{status}</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <Progress value={progress} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[#fbfbfd]">
+              <div className="flex items-center justify-between border-b border-slate-200 bg-[#e9ecf3] px-5 py-4 sm:px-6">
+                <div className="flex items-center gap-3">
+                  <Settings2 className="h-5 w-5 text-slate-600" />
+                  <h2 className="text-[1.35rem] font-semibold text-slate-900">Trim Settings</h2>
+                </div>
+                <div className="rounded-md border border-slate-300 p-1 text-slate-500">
+                  <Scissors className="h-4 w-4" />
+                </div>
+              </div>
+
+              <div className="space-y-6 px-5 py-8 sm:px-6">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                      <span>Trim start</span>
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#a9d75c] text-[11px] font-bold text-slate-800">
+                        ?
+                      </span>
+                    </div>
+                    <div className="relative">
                       <Input
                         type="number"
                         min={0}
@@ -686,10 +703,28 @@ function VideoTrimmerApp() {
                         step={0.1}
                         value={Number(range[0].toFixed(1))}
                         onChange={(e) => applyRange(Number(e.target.value || 0), range[1])}
+                        className="pr-12 font-mono text-base"
                       />
+                      <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-500">
+                        <ChevronDown className="h-4 w-4" />
+                      </span>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <label className="mb-2 block text-sm text-slate-300">End time</label>
+                    <div className="rounded-xl bg-[#6f73e8] p-[1px]">
+                      <Button className="h-11 w-full rounded-[11px] border-0 bg-[#6f73e8] text-base font-semibold" onClick={copyCurrentTimeToStart}>
+                        Copy Player Time
+                      </Button>
+                    </div>
+                    <p className="text-sm text-slate-500">Shown as {formatTimestamp(range[0])}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                      <span>Trim end</span>
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#a9d75c] text-[11px] font-bold text-slate-800">
+                        ?
+                      </span>
+                    </div>
+                    <div className="relative">
                       <Input
                         type="number"
                         min={0.1}
@@ -697,106 +732,90 @@ function VideoTrimmerApp() {
                         step={0.1}
                         value={Number(range[1].toFixed(1))}
                         onChange={(e) => applyRange(range[0], Number(e.target.value || range[0] + 0.1))}
+                        className="pr-12 font-mono text-base"
                       />
+                      <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-500">
+                        <ChevronDown className="h-4 w-4" />
+                      </span>
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {PRESETS.map((preset) => (
-                      <Button key={preset.label} variant="secondary" onClick={() => applyPreset(preset.value)} className="rounded-2xl">
-                        <Sparkles className="h-4 w-4" /> {preset.label}
+                    <div className="rounded-xl bg-[#6f73e8] p-[1px]">
+                      <Button className="h-11 w-full rounded-[11px] border-0 bg-[#6f73e8] text-base font-semibold" onClick={copyCurrentTimeToEnd}>
+                        Copy Player Time
                       </Button>
-                    ))}
+                    </div>
+                    <p className="text-sm text-slate-500">Shown as {formatTimestamp(range[1])}</p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
-                  <Button onClick={handleTrim} disabled={!file || isTrimming || isLoadingEngine} className="rounded-2xl">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {PRESETS.map((preset) => (
+                    <Button key={preset.label} variant="outline" onClick={() => applyPreset(preset.value)} className="h-12 rounded-xl text-base">
+                      {preset.label}
+                    </Button>
+                  ))}
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-sm text-slate-500">Player</p>
+                    <p className="font-mono text-lg font-semibold text-slate-900">{formatTimestamp(currentTime)}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-8 sm:pt-12">
+                  <div className="flex justify-end">
+                    <div className="flex overflow-hidden rounded-xl border border-[#7b81ff] bg-white">
+                      <Button variant="outline" onClick={resetAll} className="rounded-none border-0 px-6 py-3 text-base font-semibold">
+                        Reset all options
+                      </Button>
+                      <button type="button" onClick={resetAll} className="border-l border-[#7b81ff] px-4 text-[#6f73e8]">
+                        <ChevronDown className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleTrim}
+                    disabled={!file || isTrimming || isLoadingEngine}
+                    className="h-12 w-full rounded-xl text-base font-semibold"
+                  >
                     {isTrimming || isLoadingEngine ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
                     {isLoadingEngine ? "Loading engine..." : isTrimming ? "Trimming..." : "Trim to MP4"}
                   </Button>
 
                   {trimmedUrl && file && (
-                    <a href={trimmedUrl} download={buildOutputName(file.name)}>
-                      <Button variant="outline" className="rounded-2xl">
+                    <a href={trimmedUrl} download={buildOutputName(file.name)} className="block">
+                      <Button variant="outline" className="h-12 w-full rounded-xl text-base font-semibold">
                         <Download className="h-4 w-4" /> Download MP4
                       </Button>
                     </a>
                   )}
-                </div>
 
-                {(isTrimming || isLoadingEngine || progress > 0) && (
-                  <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="flex items-center justify-between text-sm text-slate-300">
-                      <span>{status}</span>
-                      <span>{progress}%</span>
+                  <div className="rounded-[18px] border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                    <div className="flex items-start gap-3">
+                      <CircleHelp className="mt-0.5 h-4 w-4 shrink-0 text-[#6f73e8]" />
+                      <p>{status}</p>
                     </div>
-                    <Progress value={progress} />
                   </div>
-                )}
+                </div>
               </div>
-            )}
+            </div>
+          </div>
 
-            <input
-              ref={inputRef}
-              type="file"
-              accept="video/*"
-              className="hidden"
-              onChange={(e) => handleVideoSelected(e.target.files?.[0] || null)}
-            />
+          <input
+            ref={inputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => handleVideoSelected(e.target.files?.[0] || null)}
+          />
 
-            {error && (
-              <Alert className="rounded-2xl border-red-500/30 bg-red-500/10 text-red-100">
+          {error && (
+            <div className="border-t border-slate-200 px-5 py-4 sm:px-6">
+              <Alert className="rounded-2xl border border-red-200 bg-red-50 text-red-700">
                 <AlertTitle>Processing error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <Card className="rounded-3xl border-white/10 bg-white/5">
-            <CardHeader>
-              <CardTitle className="text-white">Production upgrades</CardTitle>
-              <CardDescription className="text-slate-300">This version is set up to function as a real deployed trimming website.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-slate-300">
-              <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-                <p className="font-medium text-white">Real MP4 export</p>
-                <p className="mt-1">Uses FFmpeg WebAssembly with H.264 video and AAC audio.</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-                <p className="font-medium text-white">Better timeline controls</p>
-                <p className="mt-1">The trim slider now behaves like a true dual-handle range selector.</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-                <p className="font-medium text-white">Self-contained UI</p>
-                <p className="mt-1">You do not need shadcn/ui for this file anymore.</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl border-white/10 bg-white/5">
-            <CardHeader>
-              <CardTitle className="text-white">What you need to run it</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-300">
-              <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 font-mono text-xs text-slate-200">
-                npm install @ffmpeg/ffmpeg @ffmpeg/util framer-motion lucide-react
-              </div>
-              <Separator />
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>This file is ready to use as a client page in a standard Next.js App Router project.</p>
-              </div>
-              <Separator />
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-                <Clock3 className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>Some preview sandboxes block FFmpeg downloads. Deploy to Next.js or Vercel for full functionality.</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          )}
+        </motion.div>
       </main>
     </div>
   );
