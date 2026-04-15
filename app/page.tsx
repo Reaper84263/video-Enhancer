@@ -360,6 +360,7 @@ function VideoTrimmerApp() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Upload a video to get started.");
   const [progress, setProgress] = useState(0);
+  const [screen, setScreen] = useState<"editor" | "results">("editor");
   const [startInput, setStartInput] = useState(formatTimestamp(0));
   const [endInput, setEndInput] = useState(formatTimestamp(0));
 
@@ -465,6 +466,7 @@ function VideoTrimmerApp() {
     setError("");
     setProgress(0);
     setStatus(`Loaded ${selectedFile.name}`);
+    setScreen("editor");
   };
 
   const onLoadedMetadata = () => {
@@ -577,7 +579,23 @@ function VideoTrimmerApp() {
       await ffmpeg.writeFile(inputName, await fetchFile(file));
 
       setStatus("Trimming video...");
-      const exitCode = await ffmpeg.exec([
+      let exitCode = await ffmpeg.exec([
+        "-ss",
+        `${range[0]}`,
+        "-i",
+        inputName,
+        "-t",
+        `${selectionLength}`,
+        "-c",
+        "copy",
+        "-movflags",
+        "+faststart",
+        outputName,
+      ]);
+
+      if (exitCode !== 0) {
+        setStatus("Fast trim fallback: building a compatible MP4...");
+        exitCode = await ffmpeg.exec([
         "-ss",
         `${range[0]}`,
         "-i",
@@ -601,7 +619,8 @@ function VideoTrimmerApp() {
         "-movflags",
         "+faststart",
         outputName,
-      ]);
+        ]);
+      }
 
       if (exitCode !== 0) {
         const recentLog = ffmpegLogsRef.current.slice(-6).join(" ").trim();
@@ -624,6 +643,7 @@ function VideoTrimmerApp() {
       const nextUrl = URL.createObjectURL(blob);
       trimmedUrlRef.current = nextUrl;
       setTrimmedUrl(nextUrl);
+      setScreen("results");
 
       try {
         await ffmpeg.deleteFile(inputName);
@@ -647,13 +667,66 @@ function VideoTrimmerApp() {
   return (
     <div className="min-h-screen bg-[#f3f4f8] text-slate-900">
       <main className="mx-auto max-w-[1280px] px-4 py-4 sm:px-6 sm:py-6">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]"
-        >
-          <div className="grid min-h-[720px] lg:grid-cols-[1.72fr_1fr]">
+        {screen === "results" && trimmedUrl && file ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="mx-auto max-w-[860px] py-8 sm:py-10"
+          >
+            <h1 className="mb-12 text-center text-[3.3rem] font-extrabold tracking-[-0.04em] text-slate-800">Video Trim Results</h1>
+            <div className="rounded-[4px] bg-white px-8 py-8 shadow-[0_14px_40px_rgba(15,23,42,0.08)]">
+              <div className="overflow-hidden rounded-[4px] border border-slate-200">
+                <div className="flex items-center gap-4 border-b border-slate-200 bg-white px-5 py-4">
+                  <div className="min-w-0 flex-1 truncate text-[0.95rem] text-slate-800">{buildOutputName(file.name)}</div>
+                  <div className="rounded-[4px] border border-emerald-400 px-10 py-2 text-sm font-semibold text-emerald-500">Done</div>
+                  <div className="flex overflow-hidden rounded-[4px]">
+                    <a href={trimmedUrl} download={buildOutputName(file.name)}>
+                      <Button className="h-12 rounded-none border-0 px-8 text-[1.05rem] font-semibold">Download</Button>
+                    </a>
+                    <div className="flex h-12 w-12 items-center justify-center border-l border-white/30 bg-[#6f73e8] text-white">
+                      <ChevronDown className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setScreen("editor")}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-400 text-lg font-semibold leading-none text-slate-500 transition hover:border-slate-500 hover:text-slate-700"
+                    aria-label="Close results"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="flex min-h-[62px] items-stretch bg-[#d9dee7]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearOutput();
+                      setScreen("editor");
+                    }}
+                    className="flex min-w-[150px] items-center justify-center gap-2 bg-[#727c88] px-6 text-[1.05rem] font-semibold text-white"
+                  >
+                    Trim More
+                  </button>
+                  <div className="flex-1" />
+                </div>
+              </div>
+
+              <p className="mt-4 max-w-[740px] text-[0.95rem] leading-8 text-slate-500">
+                Converted files are automatically deleted after 8 hours to protect your privacy. Please download files
+                before they are deleted.
+              </p>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]"
+          >
+            <div className="grid min-h-[720px] lg:grid-cols-[1.72fr_1fr]">
             <div className="border-b border-slate-200 px-3 py-3 sm:px-6 sm:py-6 lg:border-b-0 lg:border-r">
               {!videoUrl ? (
                 <motion.button
@@ -882,25 +955,26 @@ function VideoTrimmerApp() {
                 </div>
               </div>
             </div>
-          </div>
-
-          <input
-            ref={inputRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={(e) => handleVideoSelected(e.target.files?.[0] || null)}
-          />
-
-          {error && (
-            <div className="border-t border-slate-200 px-5 py-4 sm:px-6">
-              <Alert className="rounded-2xl border border-red-200 bg-red-50 text-red-700">
-                <AlertTitle>Processing error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
             </div>
-          )}
-        </motion.div>
+
+            <input
+              ref={inputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => handleVideoSelected(e.target.files?.[0] || null)}
+            />
+
+            {error && (
+              <div className="border-t border-slate-200 px-5 py-4 sm:px-6">
+                <Alert className="rounded-2xl border border-red-200 bg-red-50 text-red-700">
+                  <AlertTitle>Processing error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              </div>
+            )}
+          </motion.div>
+        )}
       </main>
     </div>
   );
