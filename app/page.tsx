@@ -508,39 +508,52 @@ function VideoTrimmerApp() {
     setIsPlaying(true);
   };
 
-  const applyRange = (nextStart: number, nextEnd: number) => {
+  const applyRange = (
+    nextStart: number,
+    nextEnd: number,
+    options?: {
+      seekTo?: number;
+    }
+  ) => {
     const safeStart = clamp(nextStart, 0, Math.max(0, duration - 0.1));
     const safeEnd = clamp(nextEnd, safeStart + 0.1, Math.max(duration, safeStart + 0.1));
     setRange([safeStart, safeEnd]);
 
     const video = videoRef.current;
     if (video) {
-      video.currentTime = safeStart;
-      setCurrentTime(safeStart);
+      const desiredTime = options?.seekTo;
+      if (typeof desiredTime === "number") {
+        const safeTime = clamp(desiredTime, safeStart, safeEnd);
+        video.currentTime = safeTime;
+        setCurrentTime(safeTime);
+      } else if (video.currentTime < safeStart || video.currentTime > safeEnd) {
+        video.currentTime = safeStart;
+        setCurrentTime(safeStart);
+      }
     }
   };
 
   const applyPreset = (seconds: number) => {
     if (!duration) return;
-    applyRange(0, Math.min(duration, seconds));
+    applyRange(0, Math.min(duration, seconds), { seekTo: 0 });
     setStatus(`Preset applied: first ${seconds} seconds.`);
   };
 
   const resetAll = () => {
     if (!duration) return;
-    applyRange(0, duration);
+    applyRange(0, duration, { seekTo: 0 });
     clearOutput();
     setProgress(0);
     setStatus("Trim range reset.");
   };
 
   const copyCurrentTimeToStart = () => {
-    applyRange(currentTime, Math.max(currentTime + 0.1, range[1]));
+    applyRange(currentTime, Math.max(currentTime + 0.1, range[1]), { seekTo: currentTime });
     setStatus("Trim start copied from player time.");
   };
 
   const copyCurrentTimeToEnd = () => {
-    applyRange(range[0], currentTime);
+    applyRange(range[0], currentTime, { seekTo: currentTime });
     setStatus("Trim end copied from player time.");
   };
 
@@ -568,23 +581,7 @@ function VideoTrimmerApp() {
       await ffmpeg.writeFile(inputName, await fetchFile(file));
 
       setStatus("Trimming video...");
-      let exitCode = await ffmpeg.exec([
-        "-ss",
-        `${range[0]}`,
-        "-i",
-        inputName,
-        "-t",
-        `${selectionLength}`,
-        "-c",
-        "copy",
-        "-movflags",
-        "+faststart",
-        outputName,
-      ]);
-
-      if (exitCode !== 0) {
-        setStatus("Fast trim was not compatible. Retrying with precise export...");
-        exitCode = await ffmpeg.exec([
+      const exitCode = await ffmpeg.exec([
         "-ss",
         `${range[0]}`,
         "-i",
@@ -594,7 +591,7 @@ function VideoTrimmerApp() {
         "-c:v",
         "libx264",
         "-preset",
-        "veryfast",
+        "ultrafast",
         "-crf",
         "23",
         "-c:a",
@@ -606,8 +603,7 @@ function VideoTrimmerApp() {
         "-movflags",
         "+faststart",
         outputName,
-        ]);
-      }
+      ]);
 
       if (exitCode !== 0) {
         const recentLog = ffmpegLogsRef.current.slice(-6).join(" ").trim();
@@ -659,8 +655,8 @@ function VideoTrimmerApp() {
           transition={{ duration: 0.35 }}
           className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]"
         >
-          <div className="grid min-h-[760px] lg:grid-cols-[1.75fr_1fr]">
-            <div className="border-b border-slate-200 p-5 sm:p-8 lg:border-b-0 lg:border-r">
+          <div className="grid min-h-[720px] lg:grid-cols-[1.72fr_1fr]">
+            <div className="border-b border-slate-200 px-3 py-3 sm:px-6 sm:py-6 lg:border-b-0 lg:border-r">
               {!videoUrl ? (
                 <motion.button
                   whileHover={{ scale: 1.01 }}
@@ -691,8 +687,8 @@ function VideoTrimmerApp() {
                   <Button className="mt-8 min-w-[180px] rounded-xl px-6 py-3 text-base">Choose file</Button>
                 </motion.button>
               ) : (
-                <div className="space-y-6">
-                  <div className="overflow-hidden rounded-[24px] bg-[#d7dbe3]">
+                <div className="space-y-5">
+                  <div className="overflow-hidden rounded-none bg-[#d7dbe3]">
                     <video
                       ref={videoRef}
                       src={previewUrl}
@@ -705,18 +701,18 @@ function VideoTrimmerApp() {
                       onPlay={() => setIsPlaying(true)}
                     />
 
-                    <div className="bg-[#cfd3db] px-3 py-3 sm:px-4">
+                    <div className="bg-[#cfd3db] px-3 py-0">
                       <div className="flex items-center gap-4">
                         <button
                           type="button"
                           onClick={togglePlay}
-                          className="flex h-10 w-10 items-center justify-center rounded-md bg-[#313844] text-white"
+                          className="flex h-10 w-10 items-center justify-center bg-[#313844] text-white"
                           aria-label={isPlaying ? "Pause preview" : "Play preview"}
                         >
                           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
                         </button>
-                        <div className="min-w-[98px] rounded-md bg-[#313844] px-3 py-2 text-center font-mono font-semibold text-white">
-                          {formatWholeTimestamp(currentTime)}
+                        <div className="min-w-[78px] bg-[#313844] px-3 py-2.5 text-center font-mono text-[1.05rem] font-semibold text-white">
+                          {formatTime(currentTime)}
                         </div>
                         <div className="flex-1">
                           <PlayerTimeline
@@ -734,43 +730,14 @@ function VideoTrimmerApp() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    <span className="text-base text-slate-900">Use current position as:</span>
-                    <Button variant="outline" onClick={copyCurrentTimeToStart} className="rounded-xl px-5 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="mr-1 text-[1.05rem] text-slate-900">Use current position as:</span>
+                    <Button variant="outline" onClick={copyCurrentTimeToStart} className="rounded-[6px] px-4 py-2 text-[1.05rem]">
                       Trim Start
                     </Button>
-                    <Button variant="outline" onClick={copyCurrentTimeToEnd} className="rounded-xl px-5 py-2.5">
+                    <Button variant="outline" onClick={copyCurrentTimeToEnd} className="rounded-[6px] px-4 py-2 text-[1.05rem]">
                       Trim End
                     </Button>
-                    <Button variant="secondary" onClick={resetPlayback} className="rounded-xl px-5 py-2.5">
-                      <RotateCcw className="h-4 w-4" /> Rewind
-                    </Button>
-                    <Button variant="secondary" onClick={() => inputRef.current?.click()} className="rounded-xl px-5 py-2.5">
-                      <Upload className="h-4 w-4" /> New File
-                    </Button>
-                  </div>
-
-                  <div className="rounded-[22px] border border-slate-200 bg-[#fafbff] p-5">
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">Trim selection</p>
-                        <p className="text-sm text-slate-500">
-                          {formatTimestamp(range[0])} to {formatTimestamp(range[1])}
-                        </p>
-                      </div>
-                      <Badge className="rounded-full bg-[#eef0ff] text-[#545add]">
-                        {formatTimestamp(selectionLength)} selected
-                      </Badge>
-                    </div>
-
-                    <Slider
-                      value={range}
-                      min={0}
-                      max={Math.max(duration, 0.1)}
-                      step={0.1}
-                      onValueChange={(value) => applyRange(value[0], value[1])}
-                      className="py-2"
-                    />
                   </div>
 
                   {(isTrimming || isLoadingEngine || progress > 0) && (
@@ -797,10 +764,10 @@ function VideoTrimmerApp() {
                 </div>
               </div>
 
-              <div className="space-y-6 px-5 py-8 sm:px-6">
+              <div className="space-y-6 px-6 py-8">
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                    <div className="flex items-center gap-2 text-[1rem] font-semibold text-slate-900">
                       <span>Trim start</span>
                       <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#a9d75c] text-[11px] font-bold text-slate-800">
                         ?
@@ -820,22 +787,21 @@ function VideoTrimmerApp() {
                           }
                           applyRange(parsed, range[1]);
                         }}
-                        className="pr-12 font-mono text-base"
+                        className="h-10 rounded-[6px] pr-12 font-mono text-base"
                       />
                       <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-500">
                         <ChevronDown className="h-4 w-4" />
                       </span>
                     </div>
                     <div className="rounded-xl bg-[#6f73e8] p-[1px]">
-                      <Button className="h-11 w-full rounded-[11px] border-0 bg-[#6f73e8] text-base font-semibold" onClick={copyCurrentTimeToStart}>
+                      <Button className="h-10 w-full rounded-[6px] border-0 bg-[#6f73e8] text-base font-semibold" onClick={copyCurrentTimeToStart}>
                         Copy Player Time
                       </Button>
                     </div>
-                    <p className="text-sm text-slate-500">Shown as {formatTimestamp(range[0])}</p>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                    <div className="flex items-center gap-2 text-[1rem] font-semibold text-slate-900">
                       <span>Trim end</span>
                       <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#a9d75c] text-[11px] font-bold text-slate-800">
                         ?
@@ -855,37 +821,24 @@ function VideoTrimmerApp() {
                           }
                           applyRange(range[0], parsed);
                         }}
-                        className="pr-12 font-mono text-base"
+                        className="h-10 rounded-[6px] pr-12 font-mono text-base"
                       />
                       <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-500">
                         <ChevronDown className="h-4 w-4" />
                       </span>
                     </div>
                     <div className="rounded-xl bg-[#6f73e8] p-[1px]">
-                      <Button className="h-11 w-full rounded-[11px] border-0 bg-[#6f73e8] text-base font-semibold" onClick={copyCurrentTimeToEnd}>
+                      <Button className="h-10 w-full rounded-[6px] border-0 bg-[#6f73e8] text-base font-semibold" onClick={copyCurrentTimeToEnd}>
                         Copy Player Time
                       </Button>
                     </div>
-                    <p className="text-sm text-slate-500">Shown as {formatTimestamp(range[1])}</p>
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {PRESETS.map((preset) => (
-                    <Button key={preset.label} variant="outline" onClick={() => applyPreset(preset.value)} className="h-12 rounded-xl text-base">
-                      {preset.label}
-                    </Button>
-                  ))}
-                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    <p className="text-sm text-slate-500">Player</p>
-                    <p className="font-mono text-lg font-semibold text-slate-900">{formatTimestamp(currentTime)}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-8 sm:pt-12">
+                <div className="space-y-3 pt-10">
                   <div className="flex justify-end">
-                    <div className="flex overflow-hidden rounded-xl border border-[#7b81ff] bg-white">
-                      <Button variant="outline" onClick={resetAll} className="rounded-none border-0 px-6 py-3 text-base font-semibold">
+                    <div className="flex overflow-hidden rounded-[6px] border border-[#7b81ff] bg-white">
+                      <Button variant="outline" onClick={resetAll} className="h-12 rounded-none border-0 px-6 py-3 text-[1rem] font-semibold">
                         Reset all options
                       </Button>
                       <button type="button" onClick={resetAll} className="border-l border-[#7b81ff] px-4 text-[#6f73e8]">
@@ -894,10 +847,21 @@ function VideoTrimmerApp() {
                     </div>
                   </div>
 
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {PRESETS.map((preset) => (
+                      <Button key={preset.label} variant="outline" onClick={() => applyPreset(preset.value)} className="h-10 rounded-[6px] text-base">
+                        {preset.label}
+                      </Button>
+                    ))}
+                    <Button variant="secondary" onClick={resetPlayback} className="h-10 rounded-[6px] text-base">
+                      <RotateCcw className="h-4 w-4" /> Rewind
+                    </Button>
+                  </div>
+
                   <Button
                     onClick={handleTrim}
                     disabled={!file || isTrimming || isLoadingEngine}
-                    className="h-12 w-full rounded-xl text-base font-semibold"
+                    className="h-12 w-full rounded-[6px] text-base font-semibold"
                   >
                     {isTrimming || isLoadingEngine ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
                     {isLoadingEngine ? "Loading engine..." : isTrimming ? "Trimming..." : "Trim to MP4"}
@@ -905,7 +869,7 @@ function VideoTrimmerApp() {
 
                   {trimmedUrl && file && (
                     <a href={trimmedUrl} download={buildOutputName(file.name)} className="block">
-                      <Button variant="outline" className="h-12 w-full rounded-xl text-base font-semibold">
+                      <Button variant="outline" className="h-12 w-full rounded-[6px] text-base font-semibold">
                         <Download className="h-4 w-4" /> Download MP4
                       </Button>
                     </a>
