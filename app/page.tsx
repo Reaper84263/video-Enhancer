@@ -142,7 +142,7 @@ function PlayerTimeline({
           className="pointer-events-none absolute bottom-full mb-2 -translate-x-1/2 rounded-md bg-[#313844] px-2 py-1 font-mono text-xs font-semibold text-white shadow-lg"
           style={{ left: `${hoverPercent}%` }}
         >
-          {formatTimestamp(hoverValue)}
+          {formatWholeTimestamp(hoverValue)}
         </div>
       )}
 
@@ -296,6 +296,15 @@ const formatTimestamp = (seconds: number) => {
   const hundredths = Math.floor((safe % 1) * 100);
 
   return [hrs, mins, secs].map((v) => String(v).padStart(2, "0")).join(":") + `.${String(hundredths).padStart(2, "0")}`;
+};
+
+const formatWholeTimestamp = (seconds: number) => {
+  const safe = Math.max(0, seconds || 0);
+  const hrs = Math.floor(safe / 3600);
+  const mins = Math.floor((safe % 3600) / 60);
+  const secs = Math.floor(safe % 60);
+
+  return [hrs, mins, secs].map((v) => String(v).padStart(2, "0")).join(":");
 };
 
 const parseTimestamp = (value: string) => {
@@ -558,8 +567,24 @@ function VideoTrimmerApp() {
       setStatus("Uploading video into FFmpeg memory...");
       await ffmpeg.writeFile(inputName, await fetchFile(file));
 
-      setStatus("Trimming and encoding MP4...");
-      const exitCode = await ffmpeg.exec([
+      setStatus("Trimming video...");
+      let exitCode = await ffmpeg.exec([
+        "-ss",
+        `${range[0]}`,
+        "-i",
+        inputName,
+        "-t",
+        `${selectionLength}`,
+        "-c",
+        "copy",
+        "-movflags",
+        "+faststart",
+        outputName,
+      ]);
+
+      if (exitCode !== 0) {
+        setStatus("Fast trim was not compatible. Retrying with precise export...");
+        exitCode = await ffmpeg.exec([
         "-ss",
         `${range[0]}`,
         "-i",
@@ -581,7 +606,8 @@ function VideoTrimmerApp() {
         "-movflags",
         "+faststart",
         outputName,
-      ]);
+        ]);
+      }
 
       if (exitCode !== 0) {
         const recentLog = ffmpegLogsRef.current.slice(-6).join(" ").trim();
@@ -689,8 +715,8 @@ function VideoTrimmerApp() {
                         >
                           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
                         </button>
-                        <div className="min-w-[118px] rounded-md bg-[#313844] px-3 py-2 text-center font-mono font-semibold text-white">
-                          {formatTimestamp(currentTime)}
+                        <div className="min-w-[98px] rounded-md bg-[#313844] px-3 py-2 text-center font-mono font-semibold text-white">
+                          {formatWholeTimestamp(currentTime)}
                         </div>
                         <div className="flex-1">
                           <PlayerTimeline
