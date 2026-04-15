@@ -251,7 +251,7 @@ const PRESETS = [
 ];
 
 const FFMPEG_CORE_VERSION = "0.12.10";
-const FFMPEG_BASE_URL = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm`;
+const FFMPEG_BASE_URL = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/umd`;
 
 function getFileExtension(name: string) {
   const ext = name.split(".").pop()?.toLowerCase();
@@ -351,7 +351,7 @@ function VideoTrimmerApp() {
       const message = err instanceof Error ? err.message : "Unknown FFmpeg load error.";
       setError(`Could not load FFmpeg: ${message}`);
       setStatus("Failed to load trimming engine.");
-      throw new Error("ffmpeg-load-failed");
+      throw new Error(message);
     } finally {
       setIsLoadingEngine(false);
     }
