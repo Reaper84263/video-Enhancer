@@ -214,7 +214,13 @@
     }
 
     #enhancedVideo {
+      transition: filter .25s ease, aspect-ratio .25s ease;
       filter: contrast(1.16) saturate(1.12) brightness(1.03);
+    }
+    .video-note {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: .82rem;
     }
 
     .meta {
@@ -356,6 +362,7 @@
           <div class="preview">
             <h3>Enhanced Preview</h3>
             <video id="enhancedVideo" controls></video>
+            <div id="enhancedSettings" class="video-note">Preview target: 4K @ 30 FPS</div>
           </div>
         </div>
 
@@ -404,6 +411,7 @@
     const metaFps = document.getElementById('metaFps');
     const originalVideo = document.getElementById('originalVideo');
     const enhancedVideo = document.getElementById('enhancedVideo');
+    const enhancedSettings = document.getElementById('enhancedSettings');
 
     let uploadedUrl = '';
     let processingTimer = null;
@@ -424,9 +432,42 @@
       return Number(fps.value);
     }
 
+    function parseResolutionValue(selectedResolution) {
+      if (selectedResolution.includes('×')) {
+        const [w, h] = selectedResolution.split('×').map((v) => Number(v));
+        return { width: w || 1920, height: h || 1080 };
+      }
+
+      const presets = {
+        '480p': { width: 854, height: 480 },
+        '720p': { width: 1280, height: 720 },
+        '1080p': { width: 1920, height: 1080 },
+        '1440p': { width: 2560, height: 1440 },
+        '2K': { width: 2048, height: 1080 },
+        '4K': { width: 3840, height: 2160 },
+        '8K': { width: 7680, height: 4320 }
+      };
+      return presets[selectedResolution] || presets['1080p'];
+    }
+
     function toggleCustomFields() {
       customResolutionFields.classList.toggle('hidden', resolution.value !== 'custom');
       customFpsField.classList.toggle('hidden', fps.value !== 'custom');
+    }
+
+    function updateEnhancedPreviewSettings(selectedResolution, selectedFps) {
+      const { width, height } = parseResolutionValue(selectedResolution);
+      const denoiseBlur = { low: 0, medium: 0.35, high: 0.75 };
+      const level = Number(strength.value);
+      const blurPx = denoiseBlur[denoise.value] ?? 0.35;
+      const sharpnessBoost = 1 + (level / 260);
+      const saturationBoost = 1.03 + (level / 320);
+      const brightnessBoost = 1.01 + (level / 900);
+
+      enhancedVideo.style.aspectRatio = `${width} / ${height}`;
+      enhancedVideo.style.filter = `contrast(${sharpnessBoost.toFixed(2)}) saturate(${saturationBoost.toFixed(2)}) brightness(${brightnessBoost.toFixed(2)}) blur(${blurPx}px)`;
+      enhancedVideo.playbackRate = Math.max(0.5, Math.min(4, selectedFps / 30));
+      enhancedSettings.textContent = `Preview target: ${selectedResolution} @ ${selectedFps} FPS`;
     }
 
     function updateMeta() {
@@ -440,6 +481,7 @@
       metaSharpness.textContent = `+${sharpness}%`;
       metaNoise.textContent = denoise.options[denoise.selectedIndex].text;
       metaFps.textContent = `${selectedFps} FPS`;
+      updateEnhancedPreviewSettings(selectedResolution, selectedFps);
     }
 
     function resetProgress() {
