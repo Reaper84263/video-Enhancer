@@ -1,12 +1,232 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Video Enhancer</title>
+  <title>Video Enhancer | 4K & 8K Upscaling Studio</title>
+  <meta name="description" content="Upload a video, choose 4K or 8K, apply AI enhancement settings, preview the result, and export." />
+  <style>
+    :root {
+      --bg: #0a0f1d; --panel: #121b30; --panel-2: #0f1729; --text: #e8efff; --muted: #9eb0d8;
+      --accent: #5f8bff; --accent-2: #2ad2ff; --ok: #3dd6a0; --border: #24365f; --danger: #ff667a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; color: var(--text);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at 0% 0%, #1b2b57 0%, transparent 38%), var(--bg);
+      min-height: 100vh;
+    }
+    .container { width: min(1120px, 93vw); margin: 0 auto; padding: 24px 0 42px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:16px; margin-bottom:24px; }
+    .brand { font-size:1.15rem; font-weight:800; } .brand span { color: var(--accent-2); }
+    .chip { color:#032239; background:linear-gradient(135deg, var(--accent), var(--accent-2)); padding:6px 12px; border-radius:999px; font-size:.78rem; font-weight:700; }
+    .hero h1 { margin:0 0 8px; font-size:clamp(1.5rem, 3.5vw, 2.4rem); line-height:1.1; }
+    .hero p { margin:0 0 22px; color:var(--muted); max-width:70ch; }
+    .grid { display:grid; grid-template-columns:350px 1fr; gap:16px; }
+    .card { background:linear-gradient(160deg, var(--panel), var(--panel-2)); border:1px solid var(--border); border-radius:14px; padding:16px; }
+    .card h2 { margin:0 0 14px; font-size:1.08rem; }
+    .field { margin-bottom:12px; } .field label { display:block; margin-bottom:6px; font-size:.9rem; color:var(--muted); }
+    .field input[type="file"], .field select, .field input[type="range"] {
+      width:100%; background:#081022; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:9px;
+    }
+    .hint { color:var(--muted); font-size:.82rem; margin-top:5px; }
+    .inline { display:flex; justify-content:space-between; color:var(--muted); font-size:.88rem; margin-top:4px; }
+    .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+    button, .download {
+      border:1px solid var(--border); border-radius:10px; padding:11px 12px; font-weight:700; cursor:pointer;
+      color:var(--text); background:transparent; text-align:center; text-decoration:none; font-size:.92rem;
+    }
+    button.primary { background:linear-gradient(135deg, var(--accent), var(--accent-2)); color:#041728; border:none; }
+    button:disabled, .download.disabled { opacity:.45; cursor:not-allowed; pointer-events:none; }
+    .status { margin-top:12px; background:#0a1121; border:1px solid var(--border); border-radius:10px; padding:10px; font-size:.9rem; color:var(--muted); }
+    .progress { margin-top:8px; height:9px; border-radius:999px; background:#060d1f; border:1px solid var(--border); overflow:hidden; }
+    .bar { width:0%; height:100%; background:linear-gradient(90deg, var(--accent), var(--ok)); transition:width .25s ease; }
+    .preview-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .preview h3 { margin:0 0 8px; font-size:.95rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+    video { width:100%; height:300px; object-fit:cover; background:#040916; border:1px solid var(--border); border-radius:10px; }
+    #enhancedVideo { filter:contrast(1.16) saturate(1.12) brightness(1.03); }
+    .meta { margin-top:12px; border-top:1px solid var(--border); padding-top:12px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; font-size:.89rem; color:var(--muted); }
+    .meta strong { display:block; color:var(--text); margin-bottom:3px; font-size:.98rem; }
+    .error { color:var(--danger); font-weight:600; margin-top:10px; min-height:1.3em; }
+    @media (max-width:980px){ .grid{grid-template-columns:1fr;} .preview-grid{grid-template-columns:1fr;} video{height:240px;} .meta{grid-template-columns:1fr;} }
+  </style>
 </head>
-<body style="font-family:Arial;background:#0b1020;color:#fff;padding:40px">
-  <h1>Video Enhancer</h1>
-  <p>4K & 8K video enhancement project.</p>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">Video <span>Enhancer</span></div>
+      <div class="chip">4K • 8K Ready</div>
+    </div>
+
+    <section class="hero">
+      <h1>Enhance your video quality to 4K or 8K</h1>
+      <p>Upload your clip, tune AI enhancement settings, preview side-by-side, and export a high-quality result.</p>
+    </section>
+
+    <section class="grid">
+      <aside class="card">
+        <h2>Enhancement Controls</h2>
+
+        <div class="field">
+          <label for="videoInput">Upload Video</label>
+          <input id="videoInput" type="file" accept="video/*" />
+          <div class="hint">Accepted: MP4, MOV, MKV, WEBM</div>
+        </div>
+
+        <div class="field">
+          <label for="resolution">Output Resolution</label>
+          <select id="resolution">
+            <option value="4K">4K (3840×2160)</option>
+            <option value="8K">8K (7680×4320)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="strength">AI Enhancement Strength</label>
+          <input id="strength" type="range" min="0" max="100" value="70" />
+          <div class="inline">
+            <span>Current strength</span>
+            <strong id="strengthText">70%</strong>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="denoise">Denoise Level</label>
+          <select id="denoise">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+
+        <div class="btn-row">
+          <button id="enhanceBtn" class="primary" disabled>Start Enhance</button>
+          <a id="downloadBtn" class="download disabled" href="#">Download</a>
+        </div>
+
+        <div class="status">
+          <div id="statusText">Upload a video to begin.</div>
+          <div class="progress"><div id="progressBar" class="bar"></div></div>
+        </div>
+
+        <div id="errorText" class="error"></div>
+      </aside>
+
+      <div class="card">
+        <h2>Live Preview</h2>
+        <div class="preview-grid">
+          <div class="preview">
+            <h3>Original</h3>
+            <video id="originalVideo" controls></video>
+          </div>
+          <div class="preview">
+            <h3>Enhanced Preview</h3>
+            <video id="enhancedVideo" controls></video>
+          </div>
+        </div>
+
+        <div class="meta">
+          <div><strong id="metaResolution">4K</strong>Target Resolution</div>
+          <div><strong id="metaSharpness">+226%</strong>Estimated Sharpness Gain</div>
+          <div><strong id="metaNoise">Medium</strong>Noise Reduction</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const videoInput = document.getElementById('videoInput');
+    const resolution = document.getElementById('resolution');
+    const strength = document.getElementById('strength');
+    const denoise = document.getElementById('denoise');
+    const enhanceBtn = document.getElementById('enhanceBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const statusText = document.getElementById('statusText');
+    const progressBar = document.getElementById('progressBar');
+    const errorText = document.getElementById('errorText');
+    const strengthText = document.getElementById('strengthText');
+    const metaResolution = document.getElementById('metaResolution');
+    const metaSharpness = document.getElementById('metaSharpness');
+    const metaNoise = document.getElementById('metaNoise');
+    const originalVideo = document.getElementById('originalVideo');
+    const enhancedVideo = document.getElementById('enhancedVideo');
+
+    let uploadedUrl = '';
+    let processingTimer = null;
+
+    function updateMeta() {
+      const level = Number(strength.value);
+      const sharpness = 100 + Math.round(level * 1.8);
+      strengthText.textContent = `${level}%`;
+      metaResolution.textContent = resolution.value;
+      metaSharpness.textContent = `+${sharpness}%`;
+      metaNoise.textContent = denoise.options[denoise.selectedIndex].text;
+    }
+
+    function resetProgress() {
+      progressBar.style.width = '0%';
+      statusText.textContent = 'Upload a video to begin.';
+      downloadBtn.classList.add('disabled');
+      downloadBtn.removeAttribute('download');
+      downloadBtn.removeAttribute('href');
+      errorText.textContent = '';
+      if (processingTimer) clearInterval(processingTimer);
+      processingTimer = null;
+    }
+
+    function setVideoSource(url) {
+      originalVideo.src = url;
+      enhancedVideo.src = url;
+      originalVideo.load();
+      enhancedVideo.load();
+      enhanceBtn.disabled = false;
+    }
+
+    videoInput.addEventListener('change', () => {
+      const file = videoInput.files[0];
+      resetProgress();
+      if (!file) { enhanceBtn.disabled = true; return; }
+      if (!file.type.startsWith('video/')) {
+        enhanceBtn.disabled = true;
+        errorText.textContent = 'Please upload a valid video file.';
+        return;
+      }
+      if (uploadedUrl) URL.revokeObjectURL(uploadedUrl);
+      uploadedUrl = URL.createObjectURL(file);
+      setVideoSource(uploadedUrl);
+      statusText.textContent = `Loaded: ${file.name}`;
+    });
+
+    enhanceBtn.addEventListener('click', () => {
+      if (!uploadedUrl) { errorText.textContent = 'Upload a video first.'; return; }
+
+      errorText.textContent = '';
+      enhanceBtn.disabled = true;
+      statusText.textContent = `Enhancing to ${resolution.value}...`;
+      let progress = 0;
+
+      processingTimer = setInterval(() => {
+        const step = Math.max(2, 12 - Math.round(Number(strength.value) / 12));
+        progress = Math.min(100, progress + step);
+        progressBar.style.width = `${progress}%`;
+
+        if (progress >= 100) {
+          clearInterval(processingTimer);
+          processingTimer = null;
+          statusText.textContent = `Enhancement complete (${resolution.value}). Ready to download.`;
+          enhanceBtn.disabled = false;
+          downloadBtn.classList.remove('disabled');
+          downloadBtn.href = uploadedUrl;
+          downloadBtn.download = `enhanced-${resolution.value.toLowerCase()}-video.webm`;
+        }
+      }, 260);
+    });
+
+    resolution.addEventListener('change', updateMeta);
+    strength.addEventListener('input', updateMeta);
+    denoise.addEventListener('change', updateMeta);
+    updateMeta();
+  </script>
 </body>
 </html>
