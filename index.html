@@ -7,49 +7,247 @@
   <meta name="description" content="Upload a video, choose 4K or 8K, apply AI enhancement settings, preview the result, and export." />
   <style>
     :root {
-      --bg: #0a0f1d; --panel: #121b30; --panel-2: #0f1729; --text: #e8efff; --muted: #9eb0d8;
-      --accent: #5f8bff; --accent-2: #2ad2ff; --ok: #3dd6a0; --border: #24365f; --danger: #ff667a;
+      --bg: #0a0f1d;
+      --panel: #121b30;
+      --panel-2: #0f1729;
+      --text: #e8efff;
+      --muted: #9eb0d8;
+      --accent: #5f8bff;
+      --accent-2: #2ad2ff;
+      --ok: #3dd6a0;
+      --border: #24365f;
+      --danger: #ff667a;
     }
+
     * { box-sizing: border-box; }
+
     body {
-      margin: 0; color: var(--text);
+      margin: 0;
+      color: var(--text);
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       background: radial-gradient(circle at 0% 0%, #1b2b57 0%, transparent 38%), var(--bg);
       min-height: 100vh;
     }
-    .container { width: min(1120px, 93vw); margin: 0 auto; padding: 24px 0 42px; }
-    .topbar { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:16px; margin-bottom:24px; }
-    .brand { font-size:1.15rem; font-weight:800; } .brand span { color: var(--accent-2); }
-    .chip { color:#032239; background:linear-gradient(135deg, var(--accent), var(--accent-2)); padding:6px 12px; border-radius:999px; font-size:.78rem; font-weight:700; }
-    .hero h1 { margin:0 0 8px; font-size:clamp(1.5rem, 3.5vw, 2.4rem); line-height:1.1; }
-    .hero p { margin:0 0 22px; color:var(--muted); max-width:70ch; }
-    .grid { display:grid; grid-template-columns:350px 1fr; gap:16px; }
-    .card { background:linear-gradient(160deg, var(--panel), var(--panel-2)); border:1px solid var(--border); border-radius:14px; padding:16px; }
-    .card h2 { margin:0 0 14px; font-size:1.08rem; }
-    .field { margin-bottom:12px; } .field label { display:block; margin-bottom:6px; font-size:.9rem; color:var(--muted); }
-    .field input[type="file"], .field select, .field input[type="range"] {
-      width:100%; background:#081022; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:9px;
+
+    .container {
+      width: min(1120px, 93vw);
+      margin: 0 auto;
+      padding: 24px 0 42px;
     }
-    .hint { color:var(--muted); font-size:.82rem; margin-top:5px; }
-    .inline { display:flex; justify-content:space-between; color:var(--muted); font-size:.88rem; margin-top:4px; }
-    .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+
+    .brand span { color: var(--accent-2); }
+
+    .chip {
+      color: #032239;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 700;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.5rem, 3.5vw, 2.4rem);
+      line-height: 1.1;
+    }
+
+    .hero p {
+      margin: 0 0 22px;
+      color: var(--muted);
+      max-width: 70ch;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: linear-gradient(160deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 1.08rem;
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+    .hidden { display: none; }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: .9rem;
+      color: var(--muted);
+    }
+
+    .field input[type="file"],
+    .field select,
+    .field input[type="range"],
+    .field input[type="number"] {
+      width: 100%;
+      background: #081022;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: .82rem;
+      margin-top: 5px;
+    }
+
+    .inline {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: .88rem;
+      margin-top: 4px;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
     button, .download {
-      border:1px solid var(--border); border-radius:10px; padding:11px 12px; font-weight:700; cursor:pointer;
-      color:var(--text); background:transparent; text-align:center; text-decoration:none; font-size:.92rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text);
+      background: transparent;
+      text-align: center;
+      text-decoration: none;
+      font-size: .92rem;
     }
-    button.primary { background:linear-gradient(135deg, var(--accent), var(--accent-2)); color:#041728; border:none; }
-    button:disabled, .download.disabled { opacity:.45; cursor:not-allowed; pointer-events:none; }
-    .status { margin-top:12px; background:#0a1121; border:1px solid var(--border); border-radius:10px; padding:10px; font-size:.9rem; color:var(--muted); }
-    .progress { margin-top:8px; height:9px; border-radius:999px; background:#060d1f; border:1px solid var(--border); overflow:hidden; }
-    .bar { width:0%; height:100%; background:linear-gradient(90deg, var(--accent), var(--ok)); transition:width .25s ease; }
-    .preview-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .preview h3 { margin:0 0 8px; font-size:.95rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
-    video { width:100%; height:300px; object-fit:cover; background:#040916; border:1px solid var(--border); border-radius:10px; }
-    #enhancedVideo { filter:contrast(1.16) saturate(1.12) brightness(1.03); }
-    .meta { margin-top:12px; border-top:1px solid var(--border); padding-top:12px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; font-size:.89rem; color:var(--muted); }
-    .meta strong { display:block; color:var(--text); margin-bottom:3px; font-size:.98rem; }
-    .error { color:var(--danger); font-weight:600; margin-top:10px; min-height:1.3em; }
-    @media (max-width:980px){ .grid{grid-template-columns:1fr;} .preview-grid{grid-template-columns:1fr;} video{height:240px;} .meta{grid-template-columns:1fr;} }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #041728;
+      border: none;
+    }
+
+    button:disabled,
+    .download.disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .status {
+      margin-top: 12px;
+      background: #0a1121;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: .9rem;
+      color: var(--muted);
+    }
+
+    .progress {
+      margin-top: 8px;
+      height: 9px;
+      border-radius: 999px;
+      background: #060d1f;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--ok));
+      transition: width .25s ease;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .preview h3 {
+      margin: 0 0 8px;
+      font-size: .95rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    video {
+      width: 100%;
+      height: 300px;
+      object-fit: cover;
+      background: #040916;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    #enhancedVideo {
+      filter: contrast(1.16) saturate(1.12) brightness(1.03);
+    }
+
+    .meta {
+      margin-top: 12px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      font-size: .89rem;
+      color: var(--muted);
+    }
+
+    .meta strong {
+      display: block;
+      color: var(--text);
+      margin-bottom: 3px;
+      font-size: .98rem;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 600;
+      margin-top: 10px;
+      min-height: 1.3em;
+    }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .preview-grid { grid-template-columns: 1fr; }
+      video { height: 240px; }
+      .meta { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -61,7 +259,10 @@
 
     <section class="hero">
       <h1>Enhance your video quality to 4K or 8K</h1>
-      <p>Upload your clip, tune AI enhancement settings, preview side-by-side, and export a high-quality result.</p>
+      <p>
+        Upload your clip, tune AI enhancement settings, preview the result side-by-side,
+        and export an enhanced version optimized for high-resolution delivery.
+      </p>
     </section>
 
     <section class="grid">
@@ -77,9 +278,41 @@
         <div class="field">
           <label for="resolution">Output Resolution</label>
           <select id="resolution">
+            <option value="480p">480p (854×480)</option>
+            <option value="720p">720p (1280×720)</option>
+            <option value="1080p">1080p (1920×1080)</option>
+            <option value="1440p">1440p (2560×1440)</option>
+            <option value="2K">2K (2048×1080)</option>
             <option value="4K">4K (3840×2160)</option>
             <option value="8K">8K (7680×4320)</option>
+            <option value="custom">Custom Resolution</option>
           </select>
+        </div>
+
+        <div id="customResolutionFields" class="field hidden">
+          <label>Custom Resolution</label>
+          <div class="inline">
+            <input id="customWidth" type="number" min="320" max="15360" step="1" value="1920" />
+            <span>×</span>
+            <input id="customHeight" type="number" min="240" max="8640" step="1" value="1080" />
+          </div>
+          <div class="hint">Set width and height for custom export dimensions.</div>
+        </div>
+
+        <div class="field">
+          <label for="fps">Output FPS</label>
+          <select id="fps">
+            <option value="24">24 FPS (Cinema)</option>
+            <option value="30" selected>30 FPS (Standard)</option>
+            <option value="60">60 FPS (Smooth)</option>
+            <option value="120">120 FPS (Ultra Smooth)</option>
+            <option value="custom">Custom FPS</option>
+          </select>
+        </div>
+
+        <div id="customFpsField" class="field hidden">
+          <label for="customFps">Custom FPS</label>
+          <input id="customFps" type="number" min="1" max="240" step="1" value="48" />
         </div>
 
         <div class="field">
@@ -127,9 +360,22 @@
         </div>
 
         <div class="meta">
-          <div><strong id="metaResolution">4K</strong>Target Resolution</div>
-          <div><strong id="metaSharpness">+226%</strong>Estimated Sharpness Gain</div>
-          <div><strong id="metaNoise">Medium</strong>Noise Reduction</div>
+          <div>
+            <strong id="metaResolution">4K</strong>
+            Target Resolution
+          </div>
+          <div>
+            <strong id="metaSharpness">+226%</strong>
+            Estimated Sharpness Gain
+          </div>
+          <div>
+            <strong id="metaNoise">Medium</strong>
+            Noise Reduction
+          </div>
+          <div>
+            <strong id="metaFps">30 FPS</strong>
+            Output Frame Rate
+          </div>
         </div>
       </div>
     </section>
@@ -138,6 +384,12 @@
   <script>
     const videoInput = document.getElementById('videoInput');
     const resolution = document.getElementById('resolution');
+    const fps = document.getElementById('fps');
+    const customResolutionFields = document.getElementById('customResolutionFields');
+    const customWidth = document.getElementById('customWidth');
+    const customHeight = document.getElementById('customHeight');
+    const customFpsField = document.getElementById('customFpsField');
+    const customFps = document.getElementById('customFps');
     const strength = document.getElementById('strength');
     const denoise = document.getElementById('denoise');
     const enhanceBtn = document.getElementById('enhanceBtn');
@@ -149,19 +401,45 @@
     const metaResolution = document.getElementById('metaResolution');
     const metaSharpness = document.getElementById('metaSharpness');
     const metaNoise = document.getElementById('metaNoise');
+    const metaFps = document.getElementById('metaFps');
     const originalVideo = document.getElementById('originalVideo');
     const enhancedVideo = document.getElementById('enhancedVideo');
 
     let uploadedUrl = '';
     let processingTimer = null;
 
+    function getSelectedResolution() {
+      if (resolution.value === 'custom') {
+        const width = Math.max(320, Number(customWidth.value) || 1920);
+        const height = Math.max(240, Number(customHeight.value) || 1080);
+        return `${width}×${height}`;
+      }
+      return resolution.value;
+    }
+
+    function getSelectedFps() {
+      if (fps.value === 'custom') {
+        return Math.max(1, Number(customFps.value) || 30);
+      }
+      return Number(fps.value);
+    }
+
+    function toggleCustomFields() {
+      customResolutionFields.classList.toggle('hidden', resolution.value !== 'custom');
+      customFpsField.classList.toggle('hidden', fps.value !== 'custom');
+    }
+
     function updateMeta() {
       const level = Number(strength.value);
       const sharpness = 100 + Math.round(level * 1.8);
+      const selectedResolution = getSelectedResolution();
+      const selectedFps = getSelectedFps();
+
       strengthText.textContent = `${level}%`;
-      metaResolution.textContent = resolution.value;
+      metaResolution.textContent = selectedResolution;
       metaSharpness.textContent = `+${sharpness}%`;
       metaNoise.textContent = denoise.options[denoise.selectedIndex].text;
+      metaFps.textContent = `${selectedFps} FPS`;
     }
 
     function resetProgress() {
@@ -171,8 +449,10 @@
       downloadBtn.removeAttribute('download');
       downloadBtn.removeAttribute('href');
       errorText.textContent = '';
-      if (processingTimer) clearInterval(processingTimer);
-      processingTimer = null;
+      if (processingTimer) {
+        clearInterval(processingTimer);
+        processingTimer = null;
+      }
     }
 
     function setVideoSource(url) {
@@ -186,24 +466,38 @@
     videoInput.addEventListener('change', () => {
       const file = videoInput.files[0];
       resetProgress();
-      if (!file) { enhanceBtn.disabled = true; return; }
+
+      if (!file) {
+        enhanceBtn.disabled = true;
+        return;
+      }
+
       if (!file.type.startsWith('video/')) {
         enhanceBtn.disabled = true;
         errorText.textContent = 'Please upload a valid video file.';
         return;
       }
-      if (uploadedUrl) URL.revokeObjectURL(uploadedUrl);
+
+      if (uploadedUrl) {
+        URL.revokeObjectURL(uploadedUrl);
+      }
+
       uploadedUrl = URL.createObjectURL(file);
       setVideoSource(uploadedUrl);
       statusText.textContent = `Loaded: ${file.name}`;
     });
 
     enhanceBtn.addEventListener('click', () => {
-      if (!uploadedUrl) { errorText.textContent = 'Upload a video first.'; return; }
+      if (!uploadedUrl) {
+        errorText.textContent = 'Upload a video first.';
+        return;
+      }
 
       errorText.textContent = '';
       enhanceBtn.disabled = true;
-      statusText.textContent = `Enhancing to ${resolution.value}...`;
+      const selectedResolution = getSelectedResolution();
+      const selectedFps = getSelectedFps();
+      statusText.textContent = `Enhancing to ${selectedResolution} @ ${selectedFps} FPS...`;
       let progress = 0;
 
       processingTimer = setInterval(() => {
@@ -214,18 +508,31 @@
         if (progress >= 100) {
           clearInterval(processingTimer);
           processingTimer = null;
-          statusText.textContent = `Enhancement complete (${resolution.value}). Ready to download.`;
+          statusText.textContent = `Enhancement complete (${selectedResolution} @ ${selectedFps} FPS). Ready to download.`;
           enhanceBtn.disabled = false;
           downloadBtn.classList.remove('disabled');
           downloadBtn.href = uploadedUrl;
-          downloadBtn.download = `enhanced-${resolution.value.toLowerCase()}-video.webm`;
+          const safeResolution = String(selectedResolution).toLowerCase().replace(/×/g, 'x');
+          downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps-video.webm`;
         }
       }, 260);
     });
 
-    resolution.addEventListener('change', updateMeta);
+    resolution.addEventListener('change', () => {
+      toggleCustomFields();
+      updateMeta();
+    });
+    fps.addEventListener('change', () => {
+      toggleCustomFields();
+      updateMeta();
+    });
+    customWidth.addEventListener('input', updateMeta);
+    customHeight.addEventListener('input', updateMeta);
+    customFps.addEventListener('input', updateMeta);
     strength.addEventListener('input', updateMeta);
     denoise.addEventListener('change', updateMeta);
+
+    toggleCustomFields();
     updateMeta();
   </script>
 </body>
