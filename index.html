@@ -601,7 +601,7 @@
         const outputFileName = 'output.mp4';
         const response = await fetch(uploadedUrl);
         const inputData = new Uint8Array(await response.arrayBuffer());
-        ffmpeg.writeFile(inputFileName, inputData);
+        await ffmpeg.writeFile(inputFileName, inputData);
 
         const { width, height } = parseResolutionValue(selectedResolution);
         let vf = `scale=${width}:${height}`;
@@ -630,7 +630,7 @@
         ];
         await ffmpeg.exec(args);
 
-        const outputData = ffmpeg.readFile(outputFileName);
+        const outputData = await ffmpeg.readFile(outputFileName);
         const outputBlob = new Blob([outputData], { type: 'video/mp4' });
         if (outputUrl) {
           URL.revokeObjectURL(outputUrl);
