@@ -614,7 +614,6 @@
         progressBar.style.width = '10%';
 
         const inputFileName = 'input.mp4';
-        const outputFileName = 'output.mp4';
         const response = await fetch(uploadedUrl);
         const inputData = new Uint8Array(await response.arrayBuffer());
         await ffmpeg.writeFile(inputFileName, inputData);
@@ -730,30 +729,6 @@
         downloadBtn.href = outputUrl;
         const safeResolution = String(selectedResolution).toLowerCase().replace(/×/g, 'x');
         downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.${outputExtension}`;
-
-        if (!outputData || outputData.length === 0) {
-          throw new Error('FFmpeg produced an empty output file. Check the encoder support and FFmpeg logs.');
-        }
-
-        const outputBlob = new Blob([
-          outputData.buffer.slice(outputData.byteOffset, outputData.byteOffset + outputData.byteLength)
-        ], { type: 'video/mp4' });
-        if (outputUrl) {
-          URL.revokeObjectURL(outputUrl);
-        }
-        outputUrl = URL.createObjectURL(outputBlob);
-        enhancedVideo.src = outputUrl;
-        enhancedVideo.load();
-        enhancedVideo.muted = true;
-        enhancedVideo.play().catch(() => {});
-
-        progressBar.style.width = '100%';
-        statusText.textContent = `Processing complete (${selectedResolution} @ ${selectedFps} FPS). Ready to download.`;
-        enhanceBtn.disabled = false;
-        downloadBtn.classList.remove('disabled');
-        downloadBtn.href = outputUrl;
-        const safeResolution = String(selectedResolution).toLowerCase().replace(/×/g, 'x');
-        downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.mp4`;
       } catch (error) {
         const message = error?.message || error?.name || (typeof error === 'string' ? error : JSON.stringify(error));
         statusText.textContent = 'Processing failed.';
