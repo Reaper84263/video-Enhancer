@@ -758,15 +758,21 @@
     customHeight.addEventListener('input', updateMeta);
     customFps.addEventListener('input', updateMeta);
     strength.addEventListener('input', updateMeta);
+    strength.addEventListener('change', updateMeta);
     denoise.addEventListener('change', updateMeta);
 
     // Sync enhanced video playback with original
     originalVideo.addEventListener('play', () => {
       enhancedVideo.currentTime = originalVideo.currentTime;
-      enhancedVideo.play();
+      enhancedVideo.play().catch(() => {});
     });
     originalVideo.addEventListener('pause', () => enhancedVideo.pause());
     originalVideo.addEventListener('seeked', () => enhancedVideo.currentTime = originalVideo.currentTime);
+    originalVideo.addEventListener('timeupdate', () => {
+      if (!enhancedVideo.paused && Math.abs(enhancedVideo.currentTime - originalVideo.currentTime) > 0.15) {
+        enhancedVideo.currentTime = originalVideo.currentTime;
+      }
+    });
 
     enhancedVideo.addEventListener('error', () => {
       const error = enhancedVideo.error;
