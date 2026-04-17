@@ -630,7 +630,7 @@
         await ffmpeg.exec(args);
 
         const outputData = ffmpeg.readFile(outputFileName);
-        const outputBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
+        const outputBlob = new Blob([outputData], { type: 'video/mp4' });
         if (outputUrl) {
           URL.revokeObjectURL(outputUrl);
         }
