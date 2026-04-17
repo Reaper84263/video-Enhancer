@@ -576,7 +576,7 @@
         progressBar.style.width = '10%';
 
         const inputFileName = 'input.mp4';
-        const outputFileName = 'output.webm';
+        const outputFileName = 'output.mp4';
         const response = await fetch(uploadedUrl);
         const inputData = new Uint8Array(await response.arrayBuffer());
         ffmpeg.writeFile(inputFileName, inputData);
@@ -587,11 +587,11 @@
           vf += ',hqdn3d';
         }
 
-        const args = ['-i', inputFileName, '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libvpx', '-c:a', 'libvorbis', '-b:v', '1M', '-b:a', '128k', outputFileName];
+        const args = ['-i', inputFileName, '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', '-movflags', 'faststart', '-avoid_negative_ts', 'make_zero', outputFileName];
         await ffmpeg.exec(args);
 
         const outputData = ffmpeg.readFile(outputFileName);
-        const outputBlob = new Blob([outputData.buffer], { type: 'video/webm' });
+        const outputBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
         if (outputUrl) {
           URL.revokeObjectURL(outputUrl);
         }
@@ -603,7 +603,7 @@
         downloadBtn.classList.remove('disabled');
         downloadBtn.href = outputUrl;
         const safeResolution = String(selectedResolution).toLowerCase().replace(/×/g, 'x');
-        downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.webm`;
+        downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.mp4`;
       } catch (error) {
         statusText.textContent = 'Processing failed.';
         errorText.textContent = error.message || 'Unknown processing error.';
