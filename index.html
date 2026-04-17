@@ -528,6 +528,8 @@
       enhanceBtn.disabled = false;
       originalVideo.currentTime = 0;
       enhancedVideo.currentTime = 0;
+      originalVideo.play().catch(() => {});
+      enhancedVideo.play().catch(() => {});
     }
 
     videoInput.addEventListener('change', () => {
