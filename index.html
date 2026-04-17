@@ -417,16 +417,15 @@
     let uploadedUrl = '';
     let processingTimer = null;
     let ffmpeg = null;
-    let createFFmpegFn = null;
-    let fetchFileFn = null;
     let isFFmpegLoaded = false;
     let outputUrl = null;
 
     const ffmpegLibrary = window.FFmpegWASM || window.FFmpeg;
     if (ffmpegLibrary) {
-      ({ createFFmpeg: createFFmpegFn, fetchFile: fetchFileFn } = ffmpegLibrary);
-      if (typeof createFFmpegFn === 'function') {
-        ffmpeg = createFFmpegFn({ log: true });
+      if (typeof ffmpegLibrary.FFmpeg === 'function') {
+        ffmpeg = new ffmpegLibrary.FFmpeg({ log: true });
+      } else if (typeof ffmpegLibrary === 'function') {
+        ffmpeg = new ffmpegLibrary({ log: true });
       }
     }
 
@@ -556,7 +555,7 @@
         return;
       }
 
-      if (!ffmpeg || !createFFmpegFn || !fetchFileFn) {
+      if (!ffmpeg) {
         errorText.textContent = 'FFmpeg is not available. Live preview still works, but enhancement requires the FFmpeg library.';
         return;
       }
@@ -578,7 +577,8 @@
 
         const inputFileName = 'input.mp4';
         const outputFileName = 'output.mp4';
-        const inputData = await fetchFileFn(uploadedUrl);
+        const response = await fetch(uploadedUrl);
+        const inputData = new Uint8Array(await response.arrayBuffer());
         ffmpeg.FS('writeFile', inputFileName, inputData);
 
         const { width, height } = parseResolutionValue(selectedResolution);
