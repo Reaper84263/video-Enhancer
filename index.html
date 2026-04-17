@@ -358,11 +358,11 @@
         <div class="preview-grid">
           <div class="preview">
             <h3>Original</h3>
-            <video id="originalVideo" controls></video>
+            <video id="originalVideo" controls playsinline></video>
           </div>
           <div class="preview">
             <h3>Enhanced Preview</h3>
-            <video id="enhancedVideo" controls></video>
+            <video id="enhancedVideo" controls playsinline></video>
             <div id="enhancedSettings" class="video-note">Preview target: 4K @ 30 FPS</div>
           </div>
         </div>
@@ -416,10 +416,18 @@
 
     let uploadedUrl = '';
     let processingTimer = null;
-    const { createFFmpeg, fetchFile } = FFmpeg;
-    const ffmpeg = createFFmpeg({ log: true });
+    let ffmpeg = null;
+    let createFFmpegFn = null;
+    let fetchFileFn = null;
     let isFFmpegLoaded = false;
     let outputUrl = null;
+
+    if (window.FFmpeg) {
+      ({ createFFmpeg: createFFmpegFn, fetchFile: fetchFileFn } = FFmpeg);
+      if (createFFmpegFn) {
+        ffmpeg = createFFmpegFn({ log: true });
+      }
+    }
 
     function getSelectedResolution() {
       if (resolution.value === 'custom') {
@@ -506,10 +514,15 @@
     function setVideoSource(url) {
       originalVideo.src = url;
       enhancedVideo.src = url;
+      originalVideo.muted = true;
       enhancedVideo.muted = true;
       originalVideo.load();
       enhancedVideo.load();
       enhanceBtn.disabled = false;
+      originalVideo.currentTime = 0;
+      enhancedVideo.currentTime = 0;
+      originalVideo.play().catch(() => {});
+      enhancedVideo.play().catch(() => {});
     }
 
     videoInput.addEventListener('change', () => {
@@ -542,6 +555,11 @@
         return;
       }
 
+      if (!ffmpeg || !createFFmpegFn || !fetchFileFn) {
+        errorText.textContent = 'FFmpeg is not available. Live preview still works, but enhancement requires the FFmpeg library.';
+        return;
+      }
+
       errorText.textContent = '';
       enhanceBtn.disabled = true;
       const selectedResolution = getSelectedResolution();
@@ -559,7 +577,7 @@
 
         const inputFileName = 'input.mp4';
         const outputFileName = 'output.mp4';
-        const inputData = await fetchFile(uploadedUrl);
+        const inputData = await fetchFileFn(uploadedUrl);
         ffmpeg.FS('writeFile', inputFileName, inputData);
 
         const { width, height } = parseResolutionValue(selectedResolution);
@@ -587,7 +605,7 @@
         downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.mp4`;
       } catch (error) {
         statusText.textContent = 'Processing failed.';
-        errorText.textContent = error.message;
+        errorText.textContent = error.message || 'Unknown processing error.';
         enhanceBtn.disabled = false;
         progressBar.style.width = '0%';
       }
