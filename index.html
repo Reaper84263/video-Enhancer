@@ -604,7 +604,14 @@
           vf += ',hqdn3d';
         }
 
-        const args = [
+        const runExport = async (commandArgs) => {
+          await ffmpeg.exec(commandArgs);
+          const data = await ffmpeg.readFile(outputFileName, 'binary');
+          console.log(`Export with ${commandArgs[7] || commandArgs[5]} produced bytes:`, data?.length);
+          return data;
+        };
+
+        const primaryArgs = [
           '-y',
           '-i', inputFileName,
           '-vf', vf,
@@ -618,10 +625,8 @@
           '-movflags', '+faststart',
           outputFileName
         ];
-        await ffmpeg.exec(args);
 
-        let outputData = await ffmpeg.readFile(outputFileName, 'binary');
-        console.log('Enhanced output bytes', outputData?.length);
+        let outputData = await runExport(primaryArgs);
         if (!outputData || outputData.length === 0) {
           console.warn('Primary MP4 export produced no output, retrying with MPEG-4 encoder.');
           const fallbackArgs = [
@@ -638,9 +643,25 @@
             '-movflags', '+faststart',
             outputFileName
           ];
-          await ffmpeg.exec(fallbackArgs);
-          outputData = await ffmpeg.readFile(outputFileName, 'binary');
-          console.log('Fallback enhanced output bytes', outputData?.length);
+          outputData = await runExport(fallbackArgs);
+        }
+
+        if (!outputData || outputData.length === 0) {
+          console.warn('MPEG-4 export also produced no output, retrying without audio.');
+          const audiolessArgs = [
+            '-y',
+            '-i', inputFileName,
+            '-vf', vf,
+            '-r', selectedFps.toString(),
+            '-c:v', 'mpeg4',
+            '-qscale:v', '5',
+            '-pix_fmt', 'yuv420p',
+            '-an',
+            '-f', 'mp4',
+            '-movflags', '+faststart',
+            outputFileName
+          ];
+          outputData = await runExport(audiolessArgs);
         }
 
         if (!outputData || outputData.length === 0) {
