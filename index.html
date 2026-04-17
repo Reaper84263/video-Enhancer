@@ -568,7 +568,7 @@
       try {
         if (!isFFmpegLoaded) {
           statusText.textContent = 'Loading FFmpeg...';
-          await ffmpeg.load();
+          await ffmpeg.load({ classWorkerURL: './814.ffmpeg.js' });
           isFFmpegLoaded = true;
         }
 
