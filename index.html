@@ -416,7 +416,8 @@
 
     let uploadedUrl = '';
     let processingTimer = null;
-    const ffmpeg = new FFmpeg();
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: true });
     let isFFmpegLoaded = false;
     let outputUrl = null;
 
@@ -556,9 +557,10 @@
         statusText.textContent = `Processing to ${selectedResolution} @ ${selectedFps} FPS...`;
         progressBar.style.width = '10%';
 
-        const response = await fetch(uploadedUrl);
-        const inputData = await response.arrayBuffer();
-        ffmpeg.writeFile('input', new Uint8Array(inputData));
+        const inputFileName = 'input.mp4';
+        const outputFileName = 'output.mp4';
+        const inputData = await fetchFile(uploadedUrl);
+        ffmpeg.FS('writeFile', inputFileName, inputData);
 
         const { width, height } = parseResolutionValue(selectedResolution);
         let vf = `scale=${width}:${height}`;
@@ -566,10 +568,10 @@
           vf += ',nlmeans';
         }
 
-        const args = ['-i', 'input', '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libx264', '-preset', 'fast', '-c:a', 'aac', 'output.mp4'];
+        const args = ['-i', inputFileName, '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libx264', '-preset', 'fast', '-c:a', 'aac', outputFileName];
         await ffmpeg.exec(args);
 
-        const outputData = ffmpeg.readFile('output.mp4');
+        const outputData = ffmpeg.FS('readFile', outputFileName);
         const outputBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
         if (outputUrl) {
           URL.revokeObjectURL(outputUrl);
