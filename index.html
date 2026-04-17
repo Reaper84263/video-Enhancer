@@ -624,6 +624,7 @@
           '-pix_fmt', 'yuv420p',
           '-c:a', 'aac',
           '-b:a', '128k',
+          '-fflags', '+genpts',
           '-movflags', '+faststart',
           outputFileName
         ];
@@ -678,6 +679,14 @@
     });
     originalVideo.addEventListener('pause', () => enhancedVideo.pause());
     originalVideo.addEventListener('seeked', () => enhancedVideo.currentTime = originalVideo.currentTime);
+
+    enhancedVideo.addEventListener('error', () => {
+      const error = enhancedVideo.error;
+      const code = error?.code;
+      const message = error ? `Enhanced video load failed (${code}): ${error.message}` : 'Enhanced video load failed.';
+      console.error(message, error);
+      errorText.textContent = message;
+    });
 
     toggleCustomFields();
     updateMeta();
