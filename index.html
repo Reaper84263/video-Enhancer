@@ -587,7 +587,7 @@
           vf += ',hqdn3d';
         }
 
-        const args = ['-i', inputFileName, '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', '-movflags', 'faststart', '-avoid_negative_ts', 'make_zero', outputFileName];
+        const args = ['-y', '-i', inputFileName, '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-profile:v', 'baseline', '-level', '3.0', '-c:a', 'aac', '-movflags', 'faststart', '-avoid_negative_ts', 'make_zero', outputFileName];
         await ffmpeg.exec(args);
 
         const outputData = ffmpeg.readFile(outputFileName);
@@ -596,6 +596,9 @@
           URL.revokeObjectURL(outputUrl);
         }
         outputUrl = URL.createObjectURL(outputBlob);
+        enhancedVideo.src = outputUrl;
+        enhancedVideo.load();
+        enhancedVideo.play().catch(() => {});
 
         progressBar.style.width = '100%';
         statusText.textContent = `Processing complete (${selectedResolution} @ ${selectedFps} FPS). Ready to download.`;
