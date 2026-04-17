@@ -631,16 +631,34 @@
 
         const selectedSize = parseResolutionValue(selectedResolution);
         const safeSize = getSafeExportResolution(selectedSize.width, selectedSize.height);
-        const exportWidth = safeSize.width;
-        const exportHeight = safeSize.height;
-        let vf = `scale=${exportWidth}:${exportHeight}`;
-        if (denoise.value === 'high') {
-          vf += ',hqdn3d';
-        }
 
-        if (safeSize.capped) {
-          statusText.textContent = `Selected export exceeds browser memory, using ${exportWidth}×${exportHeight} instead.`;
-        }
+        const buildScaleFilter = (width, height) => {
+          let filter = `scale=${width}:${height}`;
+          if (denoise.value === 'high') {
+            filter += ',hqdn3d';
+          }
+          return filter;
+        };
+
+        const isMemoryFailure = (message) => {
+          const lower = String(message || '').toLowerCase();
+          return lower.includes('memory access out of bounds')
+            || lower.includes('out of memory')
+            || lower.includes('cannot enlarge memory arrays')
+            || lower.includes('runtimeerror');
+        };
+
+        const attempts = [];
+        const pushAttempt = (width, height, reason) => {
+          const key = `${width}x${height}`;
+          if (!attempts.some((entry) => `${entry.width}x${entry.height}` === key)) {
+            attempts.push({ width, height, reason });
+          }
+        };
+
+        pushAttempt(safeSize.width, safeSize.height, safeSize.capped ? 'Selected export capped to browser-safe resolution' : 'Selected export');
+        pushAttempt(1280, 720, 'Fallback to reduce browser memory usage');
+        pushAttempt(854, 480, 'Emergency fallback for very constrained memory');
 
         const runExport = async (commandArgs, filename) => {
           await ffmpeg.exec(commandArgs);
@@ -649,34 +667,19 @@
           return data;
         };
 
-        let outputFileName = 'output.mp4';
-        const primaryArgs = [
-          '-y',
-          '-i', inputFileName,
-          '-vf', vf,
-          '-r', selectedFps.toString(),
-          '-threads', '1',
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast',
-          '-pix_fmt', 'yuv420p',
-          '-c:a', 'aac',
-          '-b:a', '128k',
-          '-f', 'mp4',
-          '-movflags', '+faststart',
-          outputFileName
-        ];
+        const runExportForSize = async (width, height) => {
+          const vf = buildScaleFilter(width, height);
+          let outputFileName = 'output.mp4';
+          let outputExtension = 'mp4';
 
-        let outputData = await runExport(primaryArgs, outputFileName);
-        if (!outputData || outputData.length === 0) {
-          console.warn('Primary MP4 export produced no output, retrying with MPEG-4 encoder.');
-          const fallbackArgs = [
+          const primaryArgs = [
             '-y',
             '-i', inputFileName,
             '-vf', vf,
             '-r', selectedFps.toString(),
             '-threads', '1',
-            '-c:v', 'mpeg4',
-            '-qscale:v', '5',
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
             '-pix_fmt', 'yuv420p',
             '-c:a', 'aac',
             '-b:a', '128k',
@@ -684,50 +687,105 @@
             '-movflags', '+faststart',
             outputFileName
           ];
-          outputData = await runExport(fallbackArgs, outputFileName);
-        }
 
-        if (!outputData || outputData.length === 0) {
-          console.warn('MPEG-4 export also produced no output, retrying without audio.');
-          const audiolessArgs = [
-            '-y',
-            '-i', inputFileName,
-            '-vf', vf,
-            '-r', selectedFps.toString(),
-            '-threads', '1',
-            '-c:v', 'mpeg4',
-            '-qscale:v', '5',
-            '-pix_fmt', 'yuv420p',
-            '-an',
-            '-f', 'mp4',
-            '-movflags', '+faststart',
-            outputFileName
-          ];
-          outputData = await runExport(audiolessArgs, outputFileName);
-        }
+          let outputData = await runExport(primaryArgs, outputFileName);
+          if (!outputData || outputData.length === 0) {
+            console.warn('Primary MP4 export produced no output, retrying with MPEG-4 encoder.');
+            const fallbackArgs = [
+              '-y',
+              '-i', inputFileName,
+              '-vf', vf,
+              '-r', selectedFps.toString(),
+              '-threads', '1',
+              '-c:v', 'mpeg4',
+              '-qscale:v', '5',
+              '-pix_fmt', 'yuv420p',
+              '-c:a', 'aac',
+              '-b:a', '128k',
+              '-f', 'mp4',
+              '-movflags', '+faststart',
+              outputFileName
+            ];
+            outputData = await runExport(fallbackArgs, outputFileName);
+          }
 
+          if (!outputData || outputData.length === 0) {
+            console.warn('MPEG-4 export also produced no output, retrying without audio.');
+            const audiolessArgs = [
+              '-y',
+              '-i', inputFileName,
+              '-vf', vf,
+              '-r', selectedFps.toString(),
+              '-threads', '1',
+              '-c:v', 'mpeg4',
+              '-qscale:v', '5',
+              '-pix_fmt', 'yuv420p',
+              '-an',
+              '-f', 'mp4',
+              '-movflags', '+faststart',
+              outputFileName
+            ];
+            outputData = await runExport(audiolessArgs, outputFileName);
+          }
+
+          if (!outputData || outputData.length === 0) {
+            console.warn('Audio-less MP4 export failed, retrying with WebM.');
+            outputFileName = 'output.webm';
+            const webmArgs = [
+              '-y',
+              '-i', inputFileName,
+              '-vf', vf,
+              '-r', selectedFps.toString(),
+              '-threads', '1',
+              '-c:v', 'libvpx',
+              '-b:v', '2M',
+              '-c:a', 'libopus',
+              '-b:a', '128k',
+              '-f', 'webm',
+              outputFileName
+            ];
+            outputData = await runExport(webmArgs, outputFileName);
+            outputExtension = 'webm';
+          }
+
+          return { outputData, outputExtension, width, height };
+        };
+
+        let outputData = null;
         let outputExtension = 'mp4';
-        if (!outputData || outputData.length === 0) {
-          console.warn('Audio-less MP4 export failed, retrying with WebM.');
-          outputFileName = 'output.webm';
-          const webmArgs = [
-            '-y',
-            '-i', inputFileName,
-            '-vf', vf,
-            '-r', selectedFps.toString(),
-            '-threads', '1',
-            '-c:v', 'libvpx',
-            '-b:v', '2M',
-            '-c:a', 'libopus',
-            '-b:a', '128k',
-            '-f', 'webm',
-            outputFileName
-          ];
-          outputData = await runExport(webmArgs, outputFileName);
-          outputExtension = 'webm';
+        let usedSize = { width: safeSize.width, height: safeSize.height };
+        let lastMemoryError = null;
+
+        for (let index = 0; index < attempts.length; index += 1) {
+          const attempt = attempts[index];
+          const isRetry = index > 0;
+          statusText.textContent = `${attempt.reason}: ${attempt.width}×${attempt.height} @ ${selectedFps} FPS...`;
+
+          try {
+            const result = await runExportForSize(attempt.width, attempt.height);
+            if (result.outputData && result.outputData.length > 0) {
+              outputData = result.outputData;
+              outputExtension = result.outputExtension;
+              usedSize = { width: attempt.width, height: attempt.height };
+              break;
+            }
+            if (!isRetry) {
+              console.warn('Initial export attempt produced no output, trying a smaller resolution.');
+            }
+          } catch (attemptError) {
+            const attemptMessage = attemptError?.message || attemptError;
+            if (!isMemoryFailure(attemptMessage)) {
+              throw attemptError;
+            }
+            lastMemoryError = attemptError;
+            console.warn(`Export failed at ${attempt.width}x${attempt.height} due to memory limits.`, attemptError);
+          }
         }
 
         if (!outputData || outputData.length === 0) {
+          if (lastMemoryError) {
+            throw new Error('Enhancement failed due to browser memory limits. Try a lower resolution, lower FPS, or a shorter clip.');
+          }
           const latestLogs = ffmpegLogs.slice(-20).join('\n');
           throw new Error(`FFmpeg produced an empty output file. Last logs:\n${latestLogs}`);
         }
@@ -745,11 +803,11 @@
         enhancedVideo.play().catch(() => {});
 
         progressBar.style.width = '100%';
-        statusText.textContent = `Processing complete (${selectedResolution} @ ${selectedFps} FPS). Ready to download.`;
+        statusText.textContent = `Processing complete (${usedSize.width}×${usedSize.height} @ ${selectedFps} FPS). Ready to download.`;
         enhanceBtn.disabled = false;
         downloadBtn.classList.remove('disabled');
         downloadBtn.href = outputUrl;
-        const safeResolution = String(selectedResolution).toLowerCase().replace(/×/g, 'x');
+        const safeResolution = `${usedSize.width}x${usedSize.height}`;
         downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.${outputExtension}`;
       } catch (error) {
         const message = error?.message || error?.name || (typeof error === 'string' ? error : JSON.stringify(error));
