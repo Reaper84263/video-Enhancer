@@ -511,6 +511,12 @@
       }
     }
 
+    function getWorkerUrl() {
+      const currentUrl = window.location.href.split('#')[0].split('?')[0];
+      const baseUrl = currentUrl.endsWith('/') ? currentUrl : currentUrl.replace(/\/[^\/]*$/, '/');
+      return new URL('814.ffmpeg.js', baseUrl).href;
+    }
+
     function setVideoSource(url) {
       originalVideo.src = url;
       enhancedVideo.src = url;
@@ -568,7 +574,7 @@
       try {
         if (!isFFmpegLoaded) {
           statusText.textContent = 'Loading FFmpeg...';
-          const workerUrl = new URL('./814.ffmpeg.js', window.location.href).href;
+          const workerUrl = getWorkerUrl();
           await ffmpeg.load({ classWorkerURL: workerUrl });
           isFFmpegLoaded = true;
         }
@@ -610,8 +616,10 @@
         const safeResolution = String(selectedResolution).toLowerCase().replace(/×/g, 'x');
         downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.mp4`;
       } catch (error) {
+        const message = error?.message || error?.name || (typeof error === 'string' ? error : JSON.stringify(error));
         statusText.textContent = 'Processing failed.';
-        errorText.textContent = error.message || 'Unknown processing error.';
+        errorText.textContent = message;
+        console.error('FFmpeg processing error:', error);
         enhanceBtn.disabled = false;
         progressBar.style.width = '0%';
       }
