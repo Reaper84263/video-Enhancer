@@ -457,16 +457,13 @@
 
     function updateEnhancedPreviewSettings(selectedResolution, selectedFps) {
       const { width, height } = parseResolutionValue(selectedResolution);
-      const denoiseBlur = { low: 0, medium: 0.35, high: 0.75 };
       const level = Number(strength.value);
-      const blurPx = denoiseBlur[denoise.value] ?? 0.35;
-      const sharpnessBoost = 1 + (level / 260);
-      const saturationBoost = 1.03 + (level / 320);
-      const brightnessBoost = 1.01 + (level / 900);
+      const sharpnessBoost = 1 + (level / 50);
+      const saturationBoost = 1 + (level / 100);
+      const brightnessBoost = 1 + (level / 200);
 
       enhancedVideo.style.aspectRatio = `${width} / ${height}`;
-      enhancedVideo.style.filter = `contrast(${sharpnessBoost.toFixed(2)}) saturate(${saturationBoost.toFixed(2)}) brightness(${brightnessBoost.toFixed(2)}) blur(${blurPx}px)`;
-      enhancedVideo.playbackRate = Math.max(0.5, Math.min(4, selectedFps / 30));
+      enhancedVideo.style.filter = `contrast(${sharpnessBoost.toFixed(2)}) saturate(${saturationBoost.toFixed(2)}) brightness(${brightnessBoost.toFixed(2)})`;
       enhancedSettings.textContent = `Preview target: ${selectedResolution} @ ${selectedFps} FPS`;
     }
 
