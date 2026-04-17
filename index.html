@@ -463,6 +463,19 @@
       return presets[selectedResolution] || presets['1080p'];
     }
 
+    function getH264ProfileLevel(width, height) {
+      if (width <= 1920 && height <= 1080) {
+        return { profile: 'main', level: '4.1' };
+      }
+      if (width <= 2560 && height <= 1440) {
+        return { profile: 'main', level: '5.1' };
+      }
+      if (width <= 3840 && height <= 2160) {
+        return { profile: 'high', level: '5.2' };
+      }
+      return { profile: 'high', level: '6.2' };
+    }
+
     function toggleCustomFields() {
       customResolutionFields.classList.toggle('hidden', resolution.value !== 'custom');
       customFpsField.classList.toggle('hidden', fps.value !== 'custom');
@@ -596,7 +609,24 @@
           vf += ',hqdn3d';
         }
 
-        const args = ['-y', '-i', inputFileName, '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-profile:v', 'baseline', '-level', '3.0', '-an', '-movflags', 'faststart', '-avoid_negative_ts', 'make_zero', outputFileName];
+        const { profile, level } = getH264ProfileLevel(width, height);
+        const args = [
+          '-y',
+          '-i', inputFileName,
+          '-vf', vf,
+          '-r', selectedFps.toString(),
+          '-map', '0:v:0',
+          '-map', '0:a?',
+          '-c:v', 'libx264',
+          '-preset', 'fast',
+          '-profile:v', profile,
+          '-level', level,
+          '-pix_fmt', 'yuv420p',
+          '-c:a', 'aac',
+          '-b:a', '128k',
+          '-movflags', '+faststart',
+          outputFileName
+        ];
         await ffmpeg.exec(args);
 
         const outputData = ffmpeg.readFile(outputFileName);
