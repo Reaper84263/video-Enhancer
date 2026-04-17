@@ -481,6 +481,17 @@
       enhancedSettings.textContent = `Preview target: ${selectedResolution} @ ${selectedFps} FPS`;
     }
 
+    function getSafeExportResolution(width, height) {
+      const maxPixels = 1920 * 1080;
+      if (width * height <= maxPixels) {
+        return { width, height, capped: false };
+      }
+      const aspect = width / height;
+      const cappedWidth = Math.round(Math.sqrt(maxPixels * aspect));
+      const cappedHeight = Math.round(cappedWidth / aspect);
+      return { width: Math.min(cappedWidth, 1920), height: Math.min(cappedHeight, 1080), capped: true };
+    }
+
     function updateMeta() {
       const level = Number(strength.value);
       const sharpness = 100 + Math.round(level * 1.8);
@@ -618,10 +629,17 @@
         const inputData = new Uint8Array(await response.arrayBuffer());
         await ffmpeg.writeFile(inputFileName, inputData);
 
-        const { width, height } = parseResolutionValue(selectedResolution);
-        let vf = `scale=${width}:${height}`;
+        const selectedSize = parseResolutionValue(selectedResolution);
+        const safeSize = getSafeExportResolution(selectedSize.width, selectedSize.height);
+        const exportWidth = safeSize.width;
+        const exportHeight = safeSize.height;
+        let vf = `scale=${exportWidth}:${exportHeight}`;
         if (denoise.value === 'high') {
           vf += ',hqdn3d';
+        }
+
+        if (safeSize.capped) {
+          statusText.textContent = `Selected export exceeds browser memory, using ${exportWidth}×${exportHeight} instead.`;
         }
 
         const runExport = async (commandArgs, filename) => {
@@ -637,8 +655,9 @@
           '-i', inputFileName,
           '-vf', vf,
           '-r', selectedFps.toString(),
+          '-threads', '1',
           '-c:v', 'libx264',
-          '-preset', 'fast',
+          '-preset', 'ultrafast',
           '-pix_fmt', 'yuv420p',
           '-c:a', 'aac',
           '-b:a', '128k',
@@ -655,6 +674,7 @@
             '-i', inputFileName,
             '-vf', vf,
             '-r', selectedFps.toString(),
+            '-threads', '1',
             '-c:v', 'mpeg4',
             '-qscale:v', '5',
             '-pix_fmt', 'yuv420p',
@@ -674,6 +694,7 @@
             '-i', inputFileName,
             '-vf', vf,
             '-r', selectedFps.toString(),
+            '-threads', '1',
             '-c:v', 'mpeg4',
             '-qscale:v', '5',
             '-pix_fmt', 'yuv420p',
@@ -694,6 +715,7 @@
             '-i', inputFileName,
             '-vf', vf,
             '-r', selectedFps.toString(),
+            '-threads', '1',
             '-c:v', 'libvpx',
             '-b:v', '2M',
             '-c:a', 'libopus',
