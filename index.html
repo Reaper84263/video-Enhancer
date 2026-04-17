@@ -587,7 +587,7 @@
           vf += ',hqdn3d';
         }
 
-        const args = ['-y', '-i', inputFileName, '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-profile:v', 'baseline', '-level', '3.0', '-c:a', 'aac', '-movflags', 'faststart', '-avoid_negative_ts', 'make_zero', outputFileName];
+        const args = ['-y', '-i', inputFileName, '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-profile:v', 'baseline', '-level', '3.0', '-an', '-movflags', 'faststart', '-avoid_negative_ts', 'make_zero', outputFileName];
         await ffmpeg.exec(args);
 
         const outputData = ffmpeg.readFile(outputFileName);
@@ -598,6 +598,7 @@
         outputUrl = URL.createObjectURL(outputBlob);
         enhancedVideo.src = outputUrl;
         enhancedVideo.load();
+        enhancedVideo.muted = true;
         enhancedVideo.play().catch(() => {});
 
         progressBar.style.width = '100%';
