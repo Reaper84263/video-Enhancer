@@ -419,6 +419,7 @@
     let ffmpeg = null;
     let isFFmpegLoaded = false;
     let outputUrl = null;
+    const ffmpegLogs = [];
 
     const ffmpegLibrary = window.FFmpegWASM || window.FFmpeg;
     if (ffmpegLibrary) {
@@ -579,7 +580,9 @@
           const wasmUrl = new URL('ffmpeg-core.wasm', workerUrl).href;
           await ffmpeg.load({ classWorkerURL: workerUrl, coreURL: coreUrl, wasmURL: wasmUrl });
           ffmpeg.on('log', (log) => {
-            console.debug('FFmpeg log:', log?.message || log);
+            const text = typeof log === 'string' ? log : log?.message || JSON.stringify(log);
+            ffmpegLogs.push(text);
+            console.debug('FFmpeg log:', text);
           });
           ffmpeg.on('progress', (progress) => {
             if (progress?.ratio != null) {
@@ -604,13 +607,14 @@
           vf += ',hqdn3d';
         }
 
-        const runExport = async (commandArgs) => {
+        const runExport = async (commandArgs, filename) => {
           await ffmpeg.exec(commandArgs);
-          const data = await ffmpeg.readFile(outputFileName, 'binary');
-          console.log(`Export with ${commandArgs[7] || commandArgs[5]} produced bytes:`, data?.length);
+          const data = await ffmpeg.readFile(filename, 'binary');
+          console.log(`Export with ${commandArgs.join(' ')} produced bytes:`, data?.length);
           return data;
         };
 
+        let outputFileName = 'output.mp4';
         const primaryArgs = [
           '-y',
           '-i', inputFileName,
@@ -626,7 +630,7 @@
           outputFileName
         ];
 
-        let outputData = await runExport(primaryArgs);
+        let outputData = await runExport(primaryArgs, outputFileName);
         if (!outputData || outputData.length === 0) {
           console.warn('Primary MP4 export produced no output, retrying with MPEG-4 encoder.');
           const fallbackArgs = [
@@ -643,7 +647,7 @@
             '-movflags', '+faststart',
             outputFileName
           ];
-          outputData = await runExport(fallbackArgs);
+          outputData = await runExport(fallbackArgs, outputFileName);
         }
 
         if (!outputData || outputData.length === 0) {
@@ -661,8 +665,53 @@
             '-movflags', '+faststart',
             outputFileName
           ];
-          outputData = await runExport(audiolessArgs);
+          outputData = await runExport(audiolessArgs, outputFileName);
         }
+
+        let outputExtension = 'mp4';
+        if (!outputData || outputData.length === 0) {
+          console.warn('Audio-less MP4 export failed, retrying with WebM.');
+          outputFileName = 'output.webm';
+          const webmArgs = [
+            '-y',
+            '-i', inputFileName,
+            '-vf', vf,
+            '-r', selectedFps.toString(),
+            '-c:v', 'libvpx',
+            '-b:v', '2M',
+            '-c:a', 'libopus',
+            '-b:a', '128k',
+            '-f', 'webm',
+            outputFileName
+          ];
+          outputData = await runExport(webmArgs, outputFileName);
+          outputExtension = 'webm';
+        }
+
+        if (!outputData || outputData.length === 0) {
+          const latestLogs = ffmpegLogs.slice(-20).join('\n');
+          throw new Error(`FFmpeg produced an empty output file. Last logs:\n${latestLogs}`);
+        }
+
+        const outputBlob = new Blob([
+          outputData.buffer.slice(outputData.byteOffset, outputData.byteOffset + outputData.byteLength)
+        ], { type: outputExtension === 'webm' ? 'video/webm' : 'video/mp4' });
+        if (outputUrl) {
+          URL.revokeObjectURL(outputUrl);
+        }
+        outputUrl = URL.createObjectURL(outputBlob);
+        enhancedVideo.src = outputUrl;
+        enhancedVideo.load();
+        enhancedVideo.muted = true;
+        enhancedVideo.play().catch(() => {});
+
+        progressBar.style.width = '100%';
+        statusText.textContent = `Processing complete (${selectedResolution} @ ${selectedFps} FPS). Ready to download.`;
+        enhanceBtn.disabled = false;
+        downloadBtn.classList.remove('disabled');
+        downloadBtn.href = outputUrl;
+        const safeResolution = String(selectedResolution).toLowerCase().replace(/×/g, 'x');
+        downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.${outputExtension}`;
 
         if (!outputData || outputData.length === 0) {
           throw new Error('FFmpeg produced an empty output file. Check the encoder support and FFmpeg logs.');
