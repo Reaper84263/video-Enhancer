@@ -520,18 +520,34 @@
 
     function setVideoSource(url) {
       originalVideo.src = url;
-      enhancedVideo.src = url;
       originalVideo.muted = true;
-      enhancedVideo.muted = true;
       originalVideo.autoplay = true;
-      enhancedVideo.autoplay = true;
       originalVideo.load();
-      enhancedVideo.load();
-      enhanceBtn.disabled = false;
       originalVideo.currentTime = 0;
+
+      enhancedVideo.muted = true;
+      enhancedVideo.autoplay = true;
+      enhancedVideo.srcObject = null;
+      enhancedVideo.src = url;
+      enhancedVideo.load();
       enhancedVideo.currentTime = 0;
-      originalVideo.play().catch(() => {});
-      enhancedVideo.play().catch(() => {});
+
+      enhanceBtn.disabled = false;
+      originalVideo.play().catch((error) => {
+        console.warn('Original preview play blocked:', error);
+      });
+      enhancedVideo.play().catch((error) => {
+        console.warn('Enhanced preview play blocked:', error);
+      });
+
+      if (originalVideo.captureStream) {
+        try {
+          enhancedVideo.srcObject = originalVideo.captureStream();
+          enhancedVideo.src = '';
+        } catch (error) {
+          console.warn('captureStream not available for enhanced preview:', error);
+        }
+      }
     }
 
     videoInput.addEventListener('change', () => {
@@ -768,12 +784,20 @@
       enhancedVideo.currentTime = originalVideo.currentTime;
     });
 
+    originalVideo.addEventListener('error', () => {
+      const error = originalVideo.error;
+      const code = error?.code;
+      const message = error ? `Preview video load failed (${code}): ${error.message}` : 'Preview video load failed.';
+      console.error(message, error);
+      errorText.textContent = 'This file cannot be previewed in the browser. Try MP4 or WebM instead.';
+    });
+
     enhancedVideo.addEventListener('error', () => {
       const error = enhancedVideo.error;
       const code = error?.code;
       const message = error ? `Enhanced video load failed (${code}): ${error.message}` : 'Enhanced video load failed.';
       console.error(message, error);
-      errorText.textContent = message;
+      errorText.textContent = 'This file cannot be previewed in the enhanced player.';
     });
 
     toggleCustomFields();
