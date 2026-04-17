@@ -505,6 +505,7 @@
     function setVideoSource(url) {
       originalVideo.src = url;
       enhancedVideo.src = url;
+      enhancedVideo.muted = true;
       originalVideo.load();
       enhancedVideo.load();
       enhanceBtn.disabled = false;
@@ -603,6 +604,14 @@
     customFps.addEventListener('input', updateMeta);
     strength.addEventListener('input', updateMeta);
     denoise.addEventListener('change', updateMeta);
+
+    // Sync enhanced video playback with original
+    originalVideo.addEventListener('play', () => {
+      enhancedVideo.currentTime = originalVideo.currentTime;
+      enhancedVideo.play();
+    });
+    originalVideo.addEventListener('pause', () => enhancedVideo.pause());
+    originalVideo.addEventListener('seeked', () => enhancedVideo.currentTime = originalVideo.currentTime);
 
     toggleCustomFields();
     updateMeta();
