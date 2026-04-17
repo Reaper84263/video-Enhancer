@@ -568,7 +568,8 @@
       try {
         if (!isFFmpegLoaded) {
           statusText.textContent = 'Loading FFmpeg...';
-          await ffmpeg.load({ classWorkerURL: './814.ffmpeg.js' });
+          const workerUrl = new URL('./814.ffmpeg.js', window.location.href).href;
+          await ffmpeg.load({ classWorkerURL: workerUrl });
           isFFmpegLoaded = true;
         }
 
