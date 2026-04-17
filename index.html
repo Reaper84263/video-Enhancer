@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Video Enhancer | 4K & 8K Upscaling Studio</title>
   <meta name="description" content="Upload a video, choose 4K or 8K, apply AI enhancement settings, preview the result, and export." />
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
   <style>
     :root {
       --bg: #0a0f1d;
@@ -415,6 +416,9 @@
 
     let uploadedUrl = '';
     let processingTimer = null;
+    const ffmpeg = new FFmpeg();
+    let isFFmpegLoaded = false;
+    let outputUrl = null;
 
     function getSelectedResolution() {
       if (resolution.value === 'custom') {
@@ -487,6 +491,10 @@
       downloadBtn.classList.add('disabled');
       downloadBtn.removeAttribute('download');
       downloadBtn.removeAttribute('href');
+      if (outputUrl) {
+        URL.revokeObjectURL(outputUrl);
+        outputUrl = null;
+      }
       errorText.textContent = '';
       if (processingTimer) {
         clearInterval(processingTimer);
@@ -526,7 +534,7 @@
       statusText.textContent = `Loaded: ${file.name}`;
     });
 
-    enhanceBtn.addEventListener('click', () => {
+    enhanceBtn.addEventListener('click', async () => {
       if (!uploadedUrl) {
         errorText.textContent = 'Upload a video first.';
         return;
@@ -536,25 +544,50 @@
       enhanceBtn.disabled = true;
       const selectedResolution = getSelectedResolution();
       const selectedFps = getSelectedFps();
-      statusText.textContent = `Enhancing to ${selectedResolution} @ ${selectedFps} FPS...`;
-      let progress = 0;
 
-      processingTimer = setInterval(() => {
-        const step = Math.max(2, 12 - Math.round(Number(strength.value) / 12));
-        progress = Math.min(100, progress + step);
-        progressBar.style.width = `${progress}%`;
-
-        if (progress >= 100) {
-          clearInterval(processingTimer);
-          processingTimer = null;
-          statusText.textContent = `Enhancement complete (${selectedResolution} @ ${selectedFps} FPS). Ready to download.`;
-          enhanceBtn.disabled = false;
-          downloadBtn.classList.remove('disabled');
-          downloadBtn.href = uploadedUrl;
-          const safeResolution = String(selectedResolution).toLowerCase().replace(/×/g, 'x');
-          downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps-video.webm`;
+      try {
+        if (!isFFmpegLoaded) {
+          statusText.textContent = 'Loading FFmpeg...';
+          await ffmpeg.load();
+          isFFmpegLoaded = true;
         }
-      }, 260);
+
+        statusText.textContent = `Processing to ${selectedResolution} @ ${selectedFps} FPS...`;
+        progressBar.style.width = '10%';
+
+        const response = await fetch(uploadedUrl);
+        const inputData = await response.arrayBuffer();
+        ffmpeg.writeFile('input', new Uint8Array(inputData));
+
+        const { width, height } = parseResolutionValue(selectedResolution);
+        let vf = `scale=${width}:${height}`;
+        if (denoise.value === 'high') {
+          vf += ',nlmeans';
+        }
+
+        const args = ['-i', 'input', '-vf', vf, '-r', selectedFps.toString(), '-c:v', 'libx264', '-preset', 'fast', '-c:a', 'aac', 'output.mp4'];
+        await ffmpeg.exec(args);
+
+        const outputData = ffmpeg.readFile('output.mp4');
+        const outputBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
+        if (outputUrl) {
+          URL.revokeObjectURL(outputUrl);
+        }
+        outputUrl = URL.createObjectURL(outputBlob);
+
+        progressBar.style.width = '100%';
+        statusText.textContent = `Processing complete (${selectedResolution} @ ${selectedFps} FPS). Ready to download.`;
+        enhanceBtn.disabled = false;
+        downloadBtn.classList.remove('disabled');
+        downloadBtn.href = outputUrl;
+        const safeResolution = String(selectedResolution).toLowerCase().replace(/×/g, 'x');
+        downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.mp4`;
+      } catch (error) {
+        statusText.textContent = 'Processing failed.';
+        errorText.textContent = error.message;
+        enhanceBtn.disabled = false;
+        progressBar.style.width = '0%';
+      }
     });
 
     resolution.addEventListener('change', () => {
