@@ -528,8 +528,6 @@
       enhanceBtn.disabled = false;
       originalVideo.currentTime = 0;
       enhancedVideo.currentTime = 0;
-      originalVideo.play().catch(() => {});
-      enhancedVideo.play().catch(() => {});
     }
 
     videoInput.addEventListener('change', () => {
@@ -761,17 +759,9 @@
     strength.addEventListener('change', updateMeta);
     denoise.addEventListener('change', updateMeta);
 
-    // Sync enhanced video playback with original
-    originalVideo.addEventListener('play', () => {
+    // Keep the preview elements independent so the enhanced preview stays responsive.
+    originalVideo.addEventListener('seeked', () => {
       enhancedVideo.currentTime = originalVideo.currentTime;
-      enhancedVideo.play().catch(() => {});
-    });
-    originalVideo.addEventListener('pause', () => enhancedVideo.pause());
-    originalVideo.addEventListener('seeked', () => enhancedVideo.currentTime = originalVideo.currentTime);
-    originalVideo.addEventListener('timeupdate', () => {
-      if (!enhancedVideo.paused && Math.abs(enhancedVideo.currentTime - originalVideo.currentTime) > 0.15) {
-        enhancedVideo.currentTime = originalVideo.currentTime;
-      }
     });
 
     enhancedVideo.addEventListener('error', () => {
