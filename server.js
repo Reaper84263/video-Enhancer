@@ -6,8 +6,18 @@ const os = require('os');
 const { spawn } = require('child_process');
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 * 1024 } });
 const PORT = process.env.PORT || 3000;
+
+const uploadRoot = path.join(os.tmpdir(), 'video-enhancer-uploads');
+fs.mkdirSync(uploadRoot, { recursive: true });
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadRoot),
+  filename: (_req, file, cb) => {
+    const safeName = String(file.originalname || 'upload.mp4').replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `${Date.now()}-${safeName}`);
+  }
+});
+const upload = multer({ storage, limits: { fileSize: 1024 * 1024 * 1024 } });
 
 const resolutionMap = {
   '480p': { width: 854, height: 480 },
@@ -57,13 +67,18 @@ app.post('/api/enhance', upload.single('video'), async (req, res) => {
   const denoise = String(req.body.denoise || 'medium');
 
   const { width, height } = parseResolution(selectedResolution);
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-enhancer-'));
-  const inputPath = path.join(tempDir, `input-${Date.now()}.mp4`);
-  const outputPath = path.join(tempDir, `output-${Date.now()}.mp4`);
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-enhancer-output-'));
+  const inputPath = req.file.path;
+  const outputPath = path.join(outputDir, `output-${Date.now()}.mp4`);
+
+  const cleanup = () => {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+    if (inputPath) {
+      fs.rmSync(inputPath, { force: true });
+    }
+  };
 
   try {
-    fs.writeFileSync(inputPath, req.file.buffer);
-
     let vf = `scale=${width}:${height}`;
     if (denoise === 'high') vf += ',hqdn3d';
 
@@ -73,21 +88,19 @@ app.post('/api/enhance', upload.single('video'), async (req, res) => {
       '-vf', vf,
       '-r', String(selectedFps),
       '-c:v', 'libx264',
-      '-preset', 'ultrafast',
-      '-crf', '28',
+      '-preset', 'veryfast',
       '-pix_fmt', 'yuv420p',
-      '-c:a', 'copy',
+      '-c:a', 'aac',
+      '-b:a', '128k',
       '-movflags', '+faststart',
       outputPath
     ]);
 
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Content-Disposition', `attachment; filename="enhanced-${width}x${height}-${selectedFps}fps.mp4"`);
-    fs.createReadStream(outputPath).pipe(res).on('close', () => {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    });
+    fs.createReadStream(outputPath).pipe(res).on('close', cleanup);
   } catch (error) {
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    cleanup();
     res.status(500).json({ error: `Server enhancement failed: ${error.message}` });
   }
 });
