@@ -286,7 +286,7 @@
           <label for="resolution">Output Resolution</label>
           <select id="resolution">
             <option value="480p">480p (854×480)</option>
-            <option value="720p">720p (1280×720)</option>
+            <option value="720p" selected>720p (1280×720)</option>
             <option value="1080p">1080p (1920×1080)</option>
             <option value="1440p">1440p (2560×1440)</option>
             <option value="2K">2K (2048×1080)</option>
@@ -309,8 +309,8 @@
         <div class="field">
           <label for="fps">Output FPS</label>
           <select id="fps">
-            <option value="24">24 FPS (Cinema)</option>
-            <option value="30" selected>30 FPS (Standard)</option>
+            <option value="24" selected>24 FPS (Cinema)</option>
+            <option value="30">30 FPS (Standard)</option>
             <option value="60">60 FPS (Smooth)</option>
             <option value="120">120 FPS (Ultra Smooth)</option>
             <option value="custom">Custom FPS</option>
@@ -523,6 +523,58 @@
       }
     }
 
+    async function enhanceOnServer(file, selectedResolution, selectedFps) {
+      const form = new FormData();
+      form.append('video', file);
+      form.append('resolution', selectedResolution);
+      form.append('fps', String(selectedFps));
+      form.append('denoise', denoise.value);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 minute timeout
+
+      const response = await fetch('/api/enhance', {
+        method: 'POST',
+        body: form,
+        signal: controller.signal
+      }).finally(() => clearTimeout(timeout));
+
+      if (!response.ok) {
+        let message = `Server enhancement failed (${response.status})`;
+        try {
+          const payload = await response.json();
+          if (payload?.error) {
+            message = payload.error;
+          }
+        } catch (error) {
+          console.warn('Could not parse server error payload:', error);
+        }
+        throw new Error(message);
+      }
+
+      const contentType = response.headers.get('content-type') || 'video/mp4';
+      const outputData = await response.blob();
+      if (!outputData || outputData.size === 0) {
+        throw new Error('Server returned an empty output file.');
+      }
+
+      if (outputUrl) {
+        URL.revokeObjectURL(outputUrl);
+      }
+      outputUrl = URL.createObjectURL(outputData);
+      enhancedVideo.srcObject = null;
+      enhancedVideo.src = outputUrl;
+      enhancedVideo.load();
+      enhancedVideo.muted = true;
+      enhancedVideo.play().catch(() => {});
+
+      downloadBtn.classList.remove('disabled');
+      downloadBtn.href = outputUrl;
+      const ext = contentType.includes('webm') ? 'webm' : 'mp4';
+      const safeResolution = String(selectedResolution).replace(/×/g, 'x');
+      downloadBtn.download = `enhanced-${safeResolution}-${selectedFps}fps.${ext}`;
+    }
+
     function getWorkerUrl() {
       const currentUrl = window.location.href.split('#')[0].split('?')[0];
       const baseUrl = currentUrl.endsWith('/') ? currentUrl : currentUrl.replace(/\/[^\/]*$/, '/');
@@ -602,6 +654,27 @@
       const selectedFps = getSelectedFps();
 
       try {
+        const inputFile = videoInput.files[0];
+        if (inputFile) {
+          try {
+            statusText.textContent = `Processing on server to ${selectedResolution} @ ${selectedFps} FPS...`;
+            progressBar.style.width = '15%';
+            await enhanceOnServer(inputFile, selectedResolution, selectedFps);
+            progressBar.style.width = '100%';
+            statusText.textContent = `Server processing complete (${selectedResolution} @ ${selectedFps} FPS). Ready to download.`;
+            enhanceBtn.disabled = false;
+            return;
+          } catch (serverError) {
+            console.warn('Server enhancement failed, falling back to in-browser FFmpeg.', serverError);
+            statusText.textContent = 'Server unavailable. Falling back to browser processing...';
+            progressBar.style.width = '5%';
+          }
+        }
+
+        if (!ffmpeg) {
+          throw new Error('Server enhancement failed and FFmpeg browser fallback is unavailable.');
+        }
+
         if (!isFFmpegLoaded) {
           statusText.textContent = 'Loading FFmpeg...';
           const workerUrl = getWorkerUrl();
