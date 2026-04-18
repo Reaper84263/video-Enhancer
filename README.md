@@ -1,3 +1,4 @@
+
 # video-Enhancer
 
 ## Run with server-side FFmpeg (recommended)
@@ -6,13 +7,16 @@
    ```bash
    npm install
    ```
-   Ensure ffmpeg CLI is installed and available on your PATH.
-
-2. Start the app:
+2. Ensure `ffmpeg` CLI is installed and available on your PATH.
+3. Start the app:
    ```bash
    npm start
    ```
-   Open http://localhost:3000.
+4. Open `http://localhost:3000`.
 
-The app now tries server-side processing first (POST /api/enhance) to avoid browser WebAssembly memory limits.
+The app now tries server-side processing first (`POST /api/enhance`) to avoid browser WebAssembly memory limits.
 If server-side processing fails, it falls back to browser FFmpeg.
+
+
+### Notes
+- Server uploads now use disk-based temporary files (instead of in-memory buffers) for better reliability with larger videos (e.g. 200MB+)
