@@ -73,7 +73,7 @@ app.post('/api/enhance', upload.single('video'), async (req, res) => {
       '-vf', vf,
       '-r', String(selectedFps),
       '-c:v', 'libx264',
-      '-preset', 'veryfast',
+      '-preset', 'ultrafast',
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-b:a', '128k',
